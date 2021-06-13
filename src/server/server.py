@@ -33,10 +33,10 @@ class Server:
                 readable, writeable = utils.socket_status(worker.socket)
                 worker.update_connection(readable, writeable)
                 
-                if worker.connection.finished_receiving() and worker.ok():
-                    self.handle_message(worker, worker.connection.get_received())
+                if worker.connection.finished_receiving():
+                    self.handle_message(worker, worker.connection.receive())
                 
-                if worker.connection.ready_to_send():
+                if not worker.connection.sending():
                     self.send_message(worker)
 
     def handle_message(self, worker, message):

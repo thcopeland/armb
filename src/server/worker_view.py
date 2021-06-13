@@ -59,9 +59,6 @@ class WorkerView:
     def update_connection(self, read, write):
         if self.connected():
             self.connection.update(read, write)
-    
-            if read and not self.connection.receiving():
-                self.connection.receive()
         
         if self.error():
             self.status = WorkerView.STATUS_ERROR

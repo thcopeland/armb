@@ -39,14 +39,11 @@ class Worker:
             readable, writeable = utils.socket_status(self.connection.socket)
             self.connection.update(readable, writeable)
             
-            if readable and not self.connection.receiving():
-                self.connection.receive()
-            
             if not self.connection.ok():
                 raise self.connection.error
             
             if self.connection.finished_receiving():
-                self.handle_message(self.connection.get_received())
+                self.handle_message(self.connection.receive())
     
     def accept_connection(self):
         sock, addr = self.socket.accept()
