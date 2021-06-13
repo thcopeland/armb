@@ -3,7 +3,7 @@ from ..protocol.connection import ARMBConnection, ARMBMessageTimeoutError, ARMBM
 from ..protocol import armb
 from ..shared.render_settings import RenderSettings
 from .server_view import ServerView
-from .. import utils
+from ..shared import utils
 
 class Worker:
     def __init__(self, port, timeout=10):
@@ -75,3 +75,5 @@ class Worker:
         settings = RenderSettings.deserialize(data)
         
         print(f"Received: resolution ({settings.resolution_x}, {settings.resolution_y}) {settings.percentage}%")
+        
+        self.connection.send(armb.synchronize_acknowledged())

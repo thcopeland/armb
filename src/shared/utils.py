@@ -10,4 +10,4 @@ class CommunicationError(Exception):
 class BadMessageError(Exception):
     def __init__(self, description, message):
         self.message = description
-        self.msg = message
+        self.message_data = message

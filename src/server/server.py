@@ -2,7 +2,7 @@ import socket, selectors
 from ..protocol.connection import ARMBConnection, ARMBMessageTimeoutError, ARMBMessageFormatError
 from ..protocol import armb
 from .worker_view import WorkerView
-from .. import utils
+from ..shared import utils
 
 class Server:
     def __init__(self, timeout=10):
@@ -44,6 +44,8 @@ class Server:
         
         if msg_str.startswith("IDENTITY"):
             self.handle_identity_message(worker, message, msg_str)
+        elif msg_str.startswith("CONFIRM SYNCHRONIZE"):
+            self.handle_confirm_sync_message(worker)
         else:
             worker.error = utils.BadMessageError("Unable to parse unknown message", message)
     
@@ -51,6 +53,10 @@ class Server:
         worker.identity = armb.parse_identity(msg_str)
         if worker.identity is None:
             raise utils.BadMessageError("Unable to parse IDENTITY message", message)
+        worker.status = WorkerView.STATUS_READY
+    
+    def handle_confirm_sync_message(self, worker):
+        worker.settings_id = self.job.settings.synchronization_id
         worker.status = WorkerView.STATUS_READY
     
     def send_message(self, worker):

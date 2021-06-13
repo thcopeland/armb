@@ -16,7 +16,7 @@ class FrameAssignment:
         self.rendered = False
         self.uploaded = False
     
-    def assigned():
+    def assigned(self):
         return not self.assignee is None
 
 class RenderJob:
@@ -49,7 +49,7 @@ class RenderJob:
         for frame in self.frame_assignments:
             if self.available(frame):
                 frame.assign(worker)
-                return frame.frame_num
+                return frame.frame_number
     
     def next_for_uploading(self, worker):
         for frame in self.frame_assignments:
@@ -61,12 +61,12 @@ class RenderJob:
     
     def mark_rendered(self, frame):
         if not self.frame_assignments[frame].rendered:
-            self.rames_rendered += 1
+            self.frames_rendered += 1
             self.frame_assignments[frame].rendered = True
         
     def mark_uploaded(self, frame):
         if not self.frame_assignments[frame].uploaded:
-            self.rames_uploaded += 1
+            self.frames_uploaded += 1
             self.frame_assignments[frame].uploaded = True
                 
     def available(self, frame):

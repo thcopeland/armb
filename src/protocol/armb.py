@@ -12,3 +12,9 @@ def parse_identity(message):
 
 def synchronize_settings(settings):
     return (bytes("SYNCHRONIZE".encode()), bytes(settings.serialize().encode()))
+
+def synchronize_acknowledged():
+    return bytes("CONFIRM SYNCHRONIZE".encode())
+
+def request_render_frame(frame):
+    return bytes(f"RENDER {frame}".encode())
