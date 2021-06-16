@@ -62,3 +62,50 @@ class WorkerView:
         
         if self.error():
             self.status = WorkerView.STATUS_ERROR
+    
+    def handle_identity_message(self, message, msg_str):
+        self.identity = armb.parse_identity_message(msg_str)
+        if self.identity is None:
+            self.err = utils.BadMessageError("Unable to parse IDENTITY message", message)
+        else:
+            self.status = WorkerView.STATUS_READY
+    
+    def handle_confirm_sync_message(self, message, msg_str):
+        sync_id = armb.parse_confirm_sync_message(msg_str)
+        
+        if sync_id is None:
+            self.err = utils.BadMessageError("Unable to parse CONFIRM SYNCHRONIZE message", message)
+        else:
+            self.settings_id = int(sync_id)
+            self.status = WorkerView.STATUS_READY
+    
+    def handle_reject_render_message(self, job, message, msg_str):
+        frame = armb.parse_reject_render_message(msg_str)
+        
+        if frame is None:
+            self.err = utils.BadMessageError("Unable to parse REJECT message", message)
+        elif job:
+            job.unassign_frame(int(frame))
+    
+    def handle_confirm_cancel_message(self):
+        self.status = WorkerView.STATUS_READY
+    
+    def request_render_frame(self, job):
+        if self.settings_id == job.settings.synchronization_id:
+            frame = job.assign_next_frame(self)
+            if frame:
+                self.connection.send(armb.new_request_render_message(frame))
+                self.status = WorkerView.STATUS_RENDERING
+        else:
+            self.connection.send(*armb.new_sync_message(job.settings))
+            self.status = WorkerView.STATUS_SYNCHRONIZING
+    
+    def request_upload_frame(self, job):
+        frame = job.next_for_uploading(self)
+        
+        if frame:
+            self.connection.send(armb.request_upload_frame(frame))
+            self.status = WorkerView.STATUS_UPLOADING
+    
+    def cancel_task(self):
+        self.connection.send(armb.new_cancel_task_message())
