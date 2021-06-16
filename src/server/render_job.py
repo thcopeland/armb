@@ -1,20 +1,17 @@
-import time
-
 class FrameAssignment:
     def __init__(self, frame_num):
-        self.assignment_time = 0
         self.frame_number = frame_num
         self.assignee = None
-        self.confirmed = False
         self.rendered = False
         self.uploaded = False
     
     def assign(self, worker):
         self.assignee = worker
-        self.assignment_time = time.time()
-        self.confirmed = False
         self.rendered = False
         self.uploaded = False
+    
+    def unassign(self):
+        self.assignee = None
     
     def assigned(self):
         return not self.assignee is None
@@ -23,7 +20,7 @@ class RenderJob:
     STATUS_RENDERING = 'RENDERING'
     STATUS_UPLOADING = 'UPLOADING'
     
-    def __init__(self, frame_start, frame_end, settings, confirmation_timeout):
+    def __init__(self, frame_start, frame_end, settings):
         self.status = RenderJob.STATUS_RENDERING
         self.frame_start = frame_start
         self.frame_end = frame_end
@@ -31,7 +28,6 @@ class RenderJob:
         self.frames_rendered = 0
         self.frames_uploaded = 0
         self.frame_assignments = [ FrameAssignment(n) for n in range(frame_start, frame_end+1) ]
-        self.confirmation_timeout = confirmation_timeout
         self.settings = settings
         
     def progress(self):
@@ -51,27 +47,33 @@ class RenderJob:
                 frame.assign(worker)
                 return frame.frame_number
     
+    def unassign_frame(self, fnum):
+        if self.frame_start <= fnum <= self.frame_end:
+            frame = self.frame_assignments[fnum - self.frame_start]
+            
+            if not frame.rendered:
+                frame.unassign()
+    
     def next_for_uploading(self, worker):
         for frame in self.frame_assignments:
             if frame.assignee is worker and not frame.uploaded:
                 return frame.frame_number
-        
-    def mark_confirmed(self, frame):
-        self.frame_assignments[frame].confirmed = True
     
-    def mark_rendered(self, frame):
-        if not self.frame_assignments[frame].rendered:
-            self.frames_rendered += 1
-            self.frame_assignments[frame].rendered = True
-        
-    def mark_uploaded(self, frame):
-        if not self.frame_assignments[frame].uploaded:
-            self.frames_uploaded += 1
-            self.frame_assignments[frame].uploaded = True
-                
+    def mark_rendered(self, fnum):
+        if self.frame_start <= fnum <= self.frame_end:
+            frame = self.frame_assignments[fnum - self.frame_start]
+            
+            if not frame.rendered:
+                self.frames_rendered += 1
+                frame.rendered = True
+    
+    def mark_uploaded(self, fnum):
+        if self.frame_start <= fnum <= self.frame_end:
+            frame = self.frame_assignments[fnum - self.frame_start]
+            
+            if not frame.uploaded:
+                self.frames_uploaded += 1
+                frame.uploaded = True
+    
     def available(self, frame):
-        unassigned = not frame.assigned()
-        unconfirmed = not frame.confirmed and time.time() - frame.assignment_time > self.confirmation_timeout
-        assignee_died = frame.assigned() and not frame.assignee.ok()
-        
-        return unassigned or unconfirmed or assignee_died
+        return not frame.assigned() or not frame.assignee.ok()

@@ -50,30 +50,56 @@ class Worker:
         sock.setblocking(False)
         self.connection = ARMBConnection(sock, self.timeout)
         self.server = ServerView()
-        self.connection.send(armb.identity())
+        self.connection.send(armb.new_identity_message())
         self.update()
     
     def handle_message(self, message):
         msg_str = message.message.tobytes().decode()
 
-        if msg_str.startswith("IDENTITY"):
+        if msg_str.startswith("IDENTITY "):
             self.handle_identity_message(message, msg_str)
-        elif msg_str.startswith("SYNCHRONIZE"):
-            self.handle_synchronize_message(message)
+        elif msg_str.startswith("SYNCHRONIZE "):
+            self.handle_synchronize_message(message, msg_str)
+        elif msg_str.startswith("RENDER "):
+            self.handle_render_message(message, msg_str)
+        elif msg_str.startswith("CANCEL"):
+            self.handle_cancel_message()
         else:
             raise utils.BadMessageError("Unable to parse unknown message", message)
     
     def handle_identity_message(self, message, msg_str):
-        id = armb.parse_identity(msg_str)
+        id = armb.parse_identity_message(msg_str)
         if id:
             self.server.identity = id
         else:
             raise utils.BadMessageError("Unable to parse IDENTITY message", message)
     
-    def handle_synchronize_message(self, message):
+    def handle_synchronize_message(self, message, msg_str):
+        id = armb.parse_sync_message(msg_str) or 0
         data = message.data.tobytes().decode()
         settings = RenderSettings.deserialize(data)
         
-        print(f"Received: resolution ({settings.resolution_x}, {settings.resolution_y}) {settings.percentage}%")
+        print(f"Received: resolution #{id} ({settings.resolution_x}, {settings.resolution_y}) {settings.percentage}%")
         
-        self.connection.send(armb.synchronize_acknowledged())
+        self.connection.send(armb.new_confirm_sync_message(id))
+    
+    def handle_render_message(self, message, msg_str):
+        frame = armb.parse_request_render_message(msg_str)
+        
+        if not frame:
+            raise utils.BadMessageError("Unable to parse RENDER message", message)
+        elif not self.server.verified() or self.task:
+            self.connection.send(armb.new_reject_render_message(frame))
+        else:
+            print(f"Rendering frame {frame}...")
+            # render render
+    
+    def handle_cancel_message(self):
+        if self.task:
+            # self.task.cancel()
+            pass
+        
+        self.connection.send(armb.new_task_cancelled_message())
+    
+    def send_render_complete_message(self):
+        self.connection.send(armb.new_render_complete_message(self.task.frame))

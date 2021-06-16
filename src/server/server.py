@@ -25,7 +25,11 @@ class Server:
             self.job = job
         
     def stop_job(self):
-        pass # todo
+        if self.job:
+            self.job = None
+            for worker in self.workers:
+                if worker.ok() and worker.status in { WorkerView.STATUS_RENDERING, WorkerView.STATUS_UPLOADING }:
+                    self.cancel_worker_task(worker)
     
     def update(self):
         for worker in self.workers:
@@ -42,22 +46,40 @@ class Server:
     def handle_message(self, worker, message):
         msg_str = message.message.tobytes().decode()
         
-        if msg_str.startswith("IDENTITY"):
+        if msg_str.startswith("IDENTITY "):
             self.handle_identity_message(worker, message, msg_str)
-        elif msg_str.startswith("CONFIRM SYNCHRONIZE"):
-            self.handle_confirm_sync_message(worker)
+        elif msg_str.startswith("CONFIRM SYNCHRONIZE "):
+            self.handle_confirm_sync_message(worker, message, msg_str)
+        elif msg_str.startswith("REJECT "):
+            self.handle_reject_render_message(worker, message, msg_str)
+        elif msg_str.startswith("CONFIRM CANCEL"):
+            self.handle_confirm_cancel_message(worker)
         else:
-            worker.error = utils.BadMessageError("Unable to parse unknown message", message)
+            worker.err = utils.BadMessageError("Unable to parse unknown message", message)
     
     def handle_identity_message(self, worker, message, msg_str):
-        worker.identity = armb.parse_identity(msg_str)
+        worker.identity = armb.parse_identity_message(msg_str)
         if worker.identity is None:
-            raise utils.BadMessageError("Unable to parse IDENTITY message", message)
-        worker.status = WorkerView.STATUS_READY
+            worker.err = utils.BadMessageError("Unable to parse IDENTITY message", message)
+        else:
+            worker.status = WorkerView.STATUS_READY
     
-    def handle_confirm_sync_message(self, worker):
-        worker.settings_id = self.job.settings.synchronization_id
-        worker.status = WorkerView.STATUS_READY
+    def handle_confirm_sync_message(self, worker, message, msg_str):
+        sync_id = armb.parse_confirm_sync_message(msg_str)
+        
+        if sync_id is None:
+            worker.err = utils.BadMessageError("Unable to parse CONFIRM SYNCHRONIZE message", message)
+        else:
+            worker.settings_id = int(sync_id)
+            worker.status = WorkerView.STATUS_READY
+    
+    def handle_reject_render_message(self, worker, message, msg_str):
+        frame = armb.parse_reject_render_message(msg_str)
+        
+        if frame is None:
+            worker.err = utils.BadMessageError("Unable to parse REJECT message", message)
+        elif self.job:
+            self.job.unassign_frame(int(frame))
     
     def send_message(self, worker):
         print(worker.status)
@@ -72,15 +94,21 @@ class Server:
         if worker.settings_id == self.job.settings.synchronization_id:
             frame = self.job.assign_next_frame(worker)
             if frame:
-                worker.connection.send(armb.request_render_frame(frame))
+                worker.connection.send(armb.new_request_render_message(frame))
                 worker.status = WorkerView.STATUS_RENDERING
         else:
-            worker.connection.send(*armb.synchronize_settings(self.job.settings))
+            worker.connection.send(*armb.new_sync_message(self.job.settings))
             worker.status = WorkerView.STATUS_SYNCHRONIZING
     
     def request_upload_frame(self, worker):
         frame = self.job.next_for_uploading(worker)
         
         if frame:
-            worker.connection.send(arb.request_upload_frame(frame))
+            worker.connection.send(armb.request_upload_frame(frame))
             worker.status = WorkerView.STATUS_UPLOADING
+    
+    def cancel_worker_task(self, worker):
+        worker.connection.send(armb.new_cancel_task_message())
+    
+    def handle_confirm_cancel_message(self, worker):
+        worker.status = WorkerView.STATUS_READY

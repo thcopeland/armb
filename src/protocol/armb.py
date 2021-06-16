@@ -1,20 +1,50 @@
 import socket, re
 from ..shared.render_settings import RenderSettings
 
-def identity():
-    return bytes(f"IDENTITY {socket.gethostname()}".encode())
-
-def parse_identity(message):
-    match = re.match("\AIDENTITY ([a-zA-Z0-9\-_.]+)\Z", message)
+def first_match_group(rexp, str):
+    match = re.match(rexp, str)
     
     if match:
         return match.group(1)
 
-def synchronize_settings(settings):
-    return (bytes("SYNCHRONIZE".encode()), bytes(settings.serialize().encode()))
+def new_identity_message():
+    return bytes(f"IDENTITY {socket.gethostname()}".encode())
 
-def synchronize_acknowledged():
-    return bytes("CONFIRM SYNCHRONIZE".encode())
+def parse_identity_message(message):
+    return first_match_group("\AIDENTITY ([\w\-.]+)\Z", message)
 
-def request_render_frame(frame):
+def new_sync_message(settings):
+    return (bytes(f"SYNCHRONIZE {settings.synchronization_id}".encode()), bytes(settings.serialize().encode()))
+
+def parse_sync_message(message):
+    return first_match_group("\ASYNCHRONIZE (\d+)\Z", message)
+
+def new_confirm_sync_message(id):
+    return bytes(f"CONFIRM SYNCHRONIZE {id}".encode())
+
+def parse_confirm_sync_message(message):
+    return first_match_group("\ACONFIRM SYNCHRONIZE (\d+)\Z", message)
+
+def new_request_render_message(frame):
     return bytes(f"RENDER {frame}".encode())
+
+def parse_request_render_message(message):
+    return first_match_group("RENDER (-?\d+)", message)
+    
+def new_reject_render_message(frame):
+    return bytes(f"REJECT {frame}".encode())
+
+def parse_reject_render_message(message):
+    return first_match_group("REJECT (-?\d+)", message)
+
+def new_render_complete_message(frame):
+    return bytes(f"COMPLETE RENDER {frame}".encode())
+
+def parse_render_complete_message(message):
+    return first_match_group("COMPLETE RENDER (-?\d+)", message)
+
+def new_cancel_task_message():
+    return bytes("CANCEL".encode())
+
+def new_task_cancelled_message():
+    return bytes("CONFIRM CANCEL".encode())

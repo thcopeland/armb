@@ -43,7 +43,7 @@ class WorkerView:
                 self.socket.connect(self.address)
                 self.socket.setblocking(False)
                 self.connection = ARMBConnection(self.socket, self.timeout)
-                self.connection.send(armb.identity())
+                self.connection.send(armb.new_identity_message())
             except OSError as e:
                 self.err = e
         
