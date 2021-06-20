@@ -101,8 +101,11 @@ class ARMBConnection:
                         print(f"{self.incoming[-1].start}: Received message \"{self.incoming[-1].message.tobytes().decode()}\" in {self.incoming[-1].elapsed()} seconds")
                 else:
                     self.incoming.append(ARMBMessageData(memoryview(bytearray(16)), memoryview(bytes(0)), memoryview(bytes(0))))
-        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError) as e:
+            self.error = e
             self.close()
+        except BlockingIOError as e:
+            print(e) # do nothing and hope for the best
     
     def __continue_sending(self):
         outgoing = self.outgoing[0]
