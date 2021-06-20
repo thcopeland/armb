@@ -41,12 +41,12 @@ class ARMBMessageData:
 
 class ARMBMessageTimeoutError(Exception):
     def __init__(self, message_data):
-        self.message = "Unable to send or receive entire message within timeout"
+        super().__init__("Unable to send or receive entire message within timeout")
         self.message_data = message_data
 
 class ARMBMessageFormatError(Exception):
     def __init__(self, message_data):
-        self.message = "Received message does not match ARMB format"
+        super().__init__("Received message does not match ARMB format")
         self.message_data = message_data
 
 class ARMBConnection:
@@ -56,9 +56,10 @@ class ARMBConnection:
         self.error = None
         self.outgoing = deque()
         self.incoming = deque()
+        self.closed = False
     
     def ok(self):
-        return self.error is None
+        return self.error is None and not self.closed
     
     def sending(self):
         return self.ok() and self.outgoing
@@ -77,27 +78,31 @@ class ARMBConnection:
             return self.incoming.popleft()
     
     def close(self):
+        self.closed = True
         self.socket.close()
     
     def update(self, read, write):
-        if self.sending():
-            if time.time() - self.outgoing[0].start > self.msg_timeout:
-                self.error = ARMBMessageTimeoutError(self.outgoing)
-            elif write:
-                self.__continue_sending()
-                if self.outgoing[0].complete():
-                    print(f"{self.outgoing[0].start}: Sent message \"{self.outgoing[0].message.tobytes().decode()}\" in {self.outgoing[0].elapsed()} seconds")
-                    self.outgoing.popleft()
-        
-        if self.receiving() and time.time() - self.incoming[-1].start > self.msg_timeout:
-            self.error = ARMBMessageTimeoutError(self.incoming[-1])
-        elif self.ok() and read:
-            if self.receiving():
-                self.__continue_receiving()
-                if self.incoming[-1].complete():
-                    print(f"{self.incoming[-1].start}: Received message \"{self.incoming[-1].message.tobytes().decode()}\" in {self.incoming[-1].elapsed()} seconds")
-            else:
-                self.incoming.append(ARMBMessageData(memoryview(bytearray(16)), memoryview(bytes(0)), memoryview(bytes(0))))
+        try:
+            if self.sending():
+                if time.time() - self.outgoing[0].start > self.msg_timeout:
+                    self.error = ARMBMessageTimeoutError(self.outgoing)
+                elif write:
+                    self.__continue_sending()
+                    if self.outgoing[0].complete():
+                        print(f"{self.outgoing[0].start}: Sent message \"{self.outgoing[0].message.tobytes().decode()}\" in {self.outgoing[0].elapsed()} seconds")
+                        self.outgoing.popleft()
+            
+            if self.receiving() and time.time() - self.incoming[-1].start > self.msg_timeout:
+                self.error = ARMBMessageTimeoutError(self.incoming[-1])
+            elif self.ok() and read:
+                if self.receiving():
+                    self.__continue_receiving()
+                    if self.incoming[-1].complete():
+                        print(f"{self.incoming[-1].start}: Received message \"{self.incoming[-1].message.tobytes().decode()}\" in {self.incoming[-1].elapsed()} seconds")
+                else:
+                    self.incoming.append(ARMBMessageData(memoryview(bytearray(16)), memoryview(bytes(0)), memoryview(bytes(0))))
+        except (ConnectionResetError, BrokenPipeError):
+            self.close()
     
     def __continue_sending(self):
         outgoing = self.outgoing[0]
@@ -116,6 +121,7 @@ class ARMBConnection:
     
     def __continue_receiving(self):
         incoming = self.incoming[-1]
+        original_progress = incoming.progress
         
         if incoming.progress < incoming.h_len():
             incoming.progress += self.socket.recv_into(incoming.header[incoming.progress:])
@@ -140,3 +146,6 @@ class ARMBConnection:
         
         if incoming.complete():
             incoming.end = time.time()
+        
+        if incoming.progress == original_progress: # read 0 bytes, EOF
+            self.close()

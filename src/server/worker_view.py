@@ -25,27 +25,31 @@ class WorkerView:
         return not self.identity is None
     
     def connected(self):
-        return not self.connection is None
+        return self.connection is not None and self.connection.ok()
     
     def ok(self):
-        return self.error() is None
+        return self.error() is None and (self.connection is None or self.connection.ok())
     
     def error(self):
         if self.err:
+            self.status = WorkerView.STATUS_ERROR
             return self.err
         elif self.connection and self.connection.error:
+            self.status = WorkerView.STATUS_ERROR
             return self.connection.error
     
     def start(self, block=False):
         def establish_connection():
             try:
                 self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.socket.settimeout(self.timeout)
                 self.socket.connect(self.address)
                 self.socket.setblocking(False)
                 self.connection = ARMBConnection(self.socket, self.timeout)
                 self.connection.send(armb.new_identity_message())
-            except OSError as e:
+            except (OSError, socket.timeout) as e:
                 self.err = e
+                self.status = WorkerView.STATUS_ERROR
         
         if block:
             establish_connection()
@@ -53,15 +57,12 @@ class WorkerView:
             threading.Thread(target=establish_connection).start()
     
     def stop(self):
-        if self.connection:
+        if self.connection and not self.connection.closed:
             self.connection.close()
     
     def update_connection(self, read, write):
         if self.connected():
             self.connection.update(read, write)
-        
-        if self.error():
-            self.status = WorkerView.STATUS_ERROR
     
     def handle_identity_message(self, message, msg_str):
         self.identity = armb.parse_identity_message(msg_str)

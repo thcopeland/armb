@@ -5,7 +5,8 @@ from .worker_view import WorkerView
 from ..shared import utils
 
 class Server:
-    def __init__(self, timeout=10):
+    def __init__(self, output_dir, timeout=10):
+        self.output_dir = output_dir
         self.timeout = timeout
         self.workers = []
         self.job = None

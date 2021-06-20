@@ -6,17 +6,19 @@ from .server_view import ServerView
 from ..shared import utils
 
 class Worker:
-    def __init__(self, port, timeout=10):
+    def __init__(self, output_dir, port, timeout=10):
+        self.output_dir = output_dir
         self.port = port
         self.timeout = timeout
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connection = None
         self.server = None
-        
+
         self.task = None
+        self.closed = False
     
     def connected(self):
-        return self.connection and self.connection.ok()
+        return self.connection and self.connection.ok() and not self.closed
     
     def start(self):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -25,25 +27,28 @@ class Worker:
         self.socket.listen()
 
     def stop(self):
+        self.closed = True
         if self.connection:
             self.connection.close()
         self.socket.close()
     
     def update(self):
-        if not self.connected():
+        if not self.closed:
             readable, writeable = utils.socket_status(self.socket)
-
             if readable:
-                self.accept_connection()
-        else:
+                if self.connected():
+                    self.reject_connection()
+                else:
+                    self.accept_connection()
+        
+        if self.connected():
             readable, writeable = utils.socket_status(self.connection.socket)
             self.connection.update(readable, writeable)
             
-            if not self.connection.ok():
-                raise self.connection.error
-            
             if self.connection.finished_receiving():
                 self.handle_message(self.connection.receive())
+        elif self.connection and self.connection.closed:
+            self.stop()
     
     def accept_connection(self):
         sock, addr = self.socket.accept()
@@ -52,6 +57,10 @@ class Worker:
         self.server = ServerView()
         self.connection.send(armb.new_identity_message())
         self.update()
+        
+    def reject_connection(self):
+        sock, addr = self.socket.accept()
+        sock.close()
     
     def handle_message(self, message):
         msg_str = message.message.tobytes().decode()
