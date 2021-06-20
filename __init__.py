@@ -86,13 +86,13 @@ class ARMBSettings(bpy.types.PropertyGroup):
     render_on_server: bpy.props.BoolProperty(name="Render on server", description="Use the server computer as another rendering worker", default=True)
     output_dir: bpy.props.StringProperty(name="Output Path", description="The directory in which to store rendered frames", subtype='DIR_PATH', default="//armb/")
     worker_list: bpy.props.CollectionProperty(type=ARMBWorkerListItem)
-    worker_index: bpy.props.IntProperty(default=0)
+    worker_index: bpy.props.IntProperty(name="Active Worker Index", default=0)
 
 class ARMB_UL_WorkerList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         worker = ARMB.server.workers[index]
         
-        if not worker.connected():
+        if not worker.connected() or worker.status == WorkerView.STATUS_INITIALIZING:
             status_icon = 'LAYER_USED'
         elif worker.status == WorkerView.STATUS_READY:
             status_icon = 'LAYER_ACTIVE'
@@ -109,7 +109,7 @@ class ARMB_UL_WorkerList(bpy.types.UIList):
             if not worker.connected() or not worker.ok():
                 layout.enabled = False
                             
-            layout.label(text=(worker.identity or 'New Worker'), icon=status_icon)
+            layout.label(text=(worker.identity or f"{item.host}:{item.port}"), icon=status_icon)
 
             if worker.error():
                 layout.label(text=str(worker.error()))
@@ -137,7 +137,7 @@ class ARMB_OT_AddWorker(bpy.types.Operator):
             new_item.host = self.worker_ip
             new_item.port = self.worker_port
             
-            self.report({'INFO'}, f"Connecting to worker at {self.worker_ip} {self.worker_port}")
+            self.report({'INFO'}, f"Connecting to worker at {self.worker_ip}:{self.worker_port}")
         except ValueError:
             self.report({'WARNING'}, f"{new_item.port} is not a valid port number")
         
@@ -153,7 +153,7 @@ class ARMB_OT_RemoveWorker(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
-        return len(context.scene.armb.worker_list) > 0
+        return 0 <= context.scene.armb.worker_index < len(context.scene.armb.worker_list)
     
     def execute(self, context):
         ARMB.server_remove_worker(context.scene.armb.worker_index)
@@ -233,15 +233,15 @@ class ARMB_OT_CancelRender(bpy.types.Operator):
 class ARMB_OT_UpdateTimer(bpy.types.Operator):
     bl_idname = "wm.armb_update_timer"
     bl_label = "ARMB Update Timer"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
 
     _timer = None
 
     def modal(self, context, event):
-        # if event.type in {'RIGHTMOUSE', 'ESC'}:
-        #     self.cancel(context)
-        #     return {'CANCELLED'}
-
         if event.type == 'TIMER':
+            if context.region:
+                context.region.tag_redraw()
             ARMB.update()
 
         return {'PASS_THROUGH'}
@@ -260,7 +260,7 @@ class ARMB_PT_UI(bpy.types.Panel):
     bl_region_type = 'WINDOW'
     bl_context = 'render'
     bl_order = 15
-
+    
     def draw(self, context):
         layout = self.layout
         scene = context.scene
@@ -281,7 +281,7 @@ class ARMB_PT_UI(bpy.types.Panel):
             row.operator("wm.start_armb_render", icon='RENDER_ANIMATION')
             row.operator("wm.cancel_armb_render", icon='CANCEL')
             
-            layout.template_list("ARMB_UL_WorkerList", "", bpy.context.scene.armb, "worker_list", bpy.context.scene.armb, "worker_index", item_dyntip_propname="name")
+            layout.template_list("ARMB_UL_WorkerList", "", bpy.context.scene.armb, "worker_list", bpy.context.scene.armb, "worker_index")
             
             row = layout.row()
             row.operator("wm.add_armb_worker", icon='ADD')
