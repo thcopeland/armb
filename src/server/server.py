@@ -18,6 +18,11 @@ class Server:
     
     def remove_worker(self, index):
         self.workers.pop(index).stop()
+        
+    def remove_all_workers(self):
+        for worker in self.workers:
+            worker.stop()
+        self.workers.clear()
     
     def start_job(self, job):
         if self.job and not self.job.uploading_complete():

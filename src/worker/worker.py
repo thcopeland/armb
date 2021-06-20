@@ -10,7 +10,7 @@ class Worker:
         self.output_dir = output_dir
         self.port = port
         self.timeout = timeout
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket = None
         self.connection = None
         self.server = None
 
@@ -21,10 +21,19 @@ class Worker:
         return self.connection and self.connection.ok() and not self.closed
     
     def start(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.setblocking(False)
         self.socket.bind(("", self.port))
         self.socket.listen()
+    
+    def restart(self):
+        self.stop()
+        self.start()
+        self.task = None
+        self.server = None
+        self.connection = None
+        self.closed = False
 
     def stop(self):
         self.closed = True
