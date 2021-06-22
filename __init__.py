@@ -14,8 +14,8 @@ bl_info = {
 import bpy
 from .src.worker.worker import Worker
 from .src.server.server import Server, WorkerView
-from .src.server.render_job import RenderJob
-from .src.shared.render_settings import RenderSettings
+# from .src.server.render_job import RenderJob
+from .src.blender.blender import create_render_job
 
 class ARMBController:
     def __init__(self):
@@ -66,6 +66,15 @@ class ARMBController:
         
     def server_remove_worker(self, index):
         self.server.remove_worker(index)
+    
+    def server_working(self):
+        return self.server.job and not self.server.job.uploading_complete()
+    
+    def server_start_render(self):
+        self.server.start_job(create_render_job())
+    
+    def server_cancel_render(self):
+        self.server.stop_job()
     
     def update(self):
         if self.is_worker():
@@ -221,7 +230,12 @@ class ARMB_OT_StartRender(bpy.types.Operator):
     bl_label = "Render"
     bl_description = "Start rendering active scene on workers"
     
+    @classmethod
+    def poll(cls, context):
+        return not ARMB.server_working()
+    
     def execute(self, context):
+        ARMB.server_start_render()
         return {'FINISHED'}
 
 class ARMB_OT_CancelRender(bpy.types.Operator):
@@ -229,7 +243,12 @@ class ARMB_OT_CancelRender(bpy.types.Operator):
     bl_label = "Cancel"
     bl_description = "Cancel the current render"
     
+    @classmethod
+    def poll(cls, context):
+        return ARMB.server_working()
+    
     def execute(self, context):
+        ARMB.server_cancel_render()
         return {'FINISHED'}
 
 class ARMB_OT_UpdateTimer(bpy.types.Operator):

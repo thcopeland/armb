@@ -2,6 +2,7 @@ import socket
 from ..protocol.connection import ARMBConnection, ARMBMessageTimeoutError, ARMBMessageFormatError
 from ..protocol import armb
 from ..shared.render_settings import RenderSettings
+from ..blender import blender
 from .server_view import ServerView
 from ..shared import utils
 
@@ -99,9 +100,8 @@ class Worker:
     def handle_synchronize_message(self, message, msg_str):
         id = armb.parse_sync_message(msg_str) or 0
         data = message.data.tobytes().decode()
-        settings = RenderSettings.deserialize(data)
         
-        print(f"Received: resolution #{id} ({settings.resolution_x}, {settings.resolution_y}) {settings.percentage}%")
+        blender.apply_render_settings(RenderSettings.deserialize(data))
         
         self.connection.send(armb.new_confirm_sync_message(id))
     
@@ -119,6 +119,7 @@ class Worker:
     def handle_cancel_message(self):
         if self.task:
             # self.task.cancel()
+            self.task = None
             pass
         
         self.connection.send(armb.new_task_cancelled_message())

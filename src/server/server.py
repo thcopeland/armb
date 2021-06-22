@@ -25,9 +25,7 @@ class Server:
         self.workers.clear()
     
     def start_job(self, job):
-        if self.job and not self.job.uploading_complete():
-            self.stop_job()
-        else:
+        if not self.job or self.job.uploading_complete():
             self.job = job
         
     def stop_job(self):

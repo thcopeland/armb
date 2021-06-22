@@ -22,9 +22,6 @@ class RenderSettings:
         self.percentage = percent
         self.synchronization_id = random.getrandbits(32)
     
-    def apply(self):
-        pass
-    
     def serialize(self):
         data = [
             ("resolution_x", self.resolution_x),
