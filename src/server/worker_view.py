@@ -1,5 +1,5 @@
 import socket, threading
-from ..protocol.connection import ARMBConnection
+from ..protocol.connection import ARMBConnection, ARMBMessageTimeoutError, ARMBMessageFormatError
 from ..protocol import armb
 
 class WorkerView:
@@ -37,6 +37,21 @@ class WorkerView:
         elif self.connection and self.connection.error:
             self.status = WorkerView.STATUS_ERROR
             return self.connection.error
+    
+    def error_description(self):
+        error = self.error()
+        
+        if error:
+            if isinstance(error, ConnectionRefusedError):
+                return "Unable to connect"
+            elif isinstance(error, ConnectionError):
+                return "Connection lost or rejected"
+            elif isinstance(error, ARMBMessageFormatError):
+                return "Received an invalid message (check ARMB versions)"
+            elif isinstance(error, ARMBMessageTimeoutError):
+                return "Connection timed out"
+            else:
+                return str(error)
     
     def start(self, block=False):
         def establish_connection():

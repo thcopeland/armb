@@ -79,6 +79,7 @@ class ARMBController:
 ARMB = ARMBController()
 
 class ARMBWorkerListItem(bpy.types.PropertyGroup):
+    temp_name: bpy.props.StringProperty(name="Name", description="A temporary name for this worker")
     host: bpy.props.StringProperty(name="Host IP", description="The IP address of the worker computer")
     port: bpy.props.StringProperty(name="Port", description="The port the worker process is running on")
 
@@ -109,10 +110,10 @@ class ARMB_UL_WorkerList(bpy.types.UIList):
             if not worker.connected() or not worker.ok():
                 layout.enabled = False
                             
-            layout.label(text=(worker.identity or f"{item.host}:{item.port}"), icon=status_icon)
+            layout.label(text=(worker.identity or item.temp_name), icon=status_icon)
 
             if worker.error():
-                layout.label(text=str(worker.error()))
+                layout.label(text=worker.error_description())
             elif not worker.connected():
                 layout.label(text="Disconnected")
 
@@ -134,6 +135,7 @@ class ARMB_OT_AddWorker(bpy.types.Operator):
             ARMB.server_add_worker(self.worker_ip, port)
             
             new_item = context.scene.armb.worker_list.add()
+            new_item.temp_name = f"{self.worker_ip}:{self.worker_port}"
             new_item.host = self.worker_ip
             new_item.port = self.worker_port
             
