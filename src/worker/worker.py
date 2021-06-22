@@ -28,8 +28,12 @@ class Worker:
         self.socket.listen()
     
     def restart(self):
-        self.stop()
-        self.start()
+        if self.closed:
+            self.stop()
+            self.start()
+        elif self.connection and not self.connect.closed:
+            self.connection.close()
+        
         self.task = None
         self.server = None
         self.connection = None
