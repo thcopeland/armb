@@ -106,6 +106,16 @@ class WorkerView:
     def handle_confirm_cancel_message(self):
         self.status = WorkerView.STATUS_READY
     
+    def handle_render_complete_message(self, job, message, msg_str):
+        try:
+            frame = int(armb.parse_render_complete_message(msg_str))
+        except ValueError:
+            self.err = utils.BadMessageError("Unable to parse COMPLETE RENDER message", message)
+        
+        if job:
+            job.mark_rendered(frame)
+            self.status = WorkerView.STATUS_READY
+    
     def request_render_frame(self, job):
         if self.settings_id == job.settings.synchronization_id:
             frame = job.assign_next_frame(self)

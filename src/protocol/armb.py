@@ -46,5 +46,5 @@ def parse_render_complete_message(message):
 def new_cancel_task_message():
     return bytes("CANCEL".encode())
 
-def new_task_cancelled_message():
+def new_confirm_cancelled_message():
     return bytes("CONFIRM CANCEL".encode())

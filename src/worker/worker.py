@@ -3,8 +3,9 @@ from ..protocol.connection import ARMBConnection, ARMBMessageTimeoutError, ARMBM
 from ..protocol import armb
 from ..shared.render_settings import RenderSettings
 from ..blender import blender
-from .server_view import ServerView
 from ..shared import utils
+from .server_view import ServerView
+from .task import RenderTask, UploadTask
 
 class Worker:
     def __init__(self, output_dir, port, timeout=10):
@@ -22,6 +23,8 @@ class Worker:
         return self.connection and self.connection.ok() and not self.closed
     
     def start(self):
+        blender.set_render_callbacks(self.handle_render_complete, self.handle_render_cancel)
+        
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.setblocking(False)
@@ -42,6 +45,7 @@ class Worker:
 
     def stop(self):
         self.closed = True
+        blender.clear_render_callbacks()
         if self.connection:
             self.connection.close()
         self.socket.close()
@@ -61,6 +65,11 @@ class Worker:
             
             if self.connection.finished_receiving():
                 self.handle_message(self.connection.receive())
+                
+            if self.task and isinstance(self.task, RenderTask) and not self.task.started:
+                self.task.started = True
+                blender.render_frame(self.task.frame, self.output_dir)
+            
         elif self.connection and self.connection.closed:
             self.stop()
     
@@ -106,23 +115,36 @@ class Worker:
         self.connection.send(armb.new_confirm_sync_message(id))
     
     def handle_render_message(self, message, msg_str):
-        frame = armb.parse_request_render_message(msg_str)
+        try:
+            frame = int(armb.parse_request_render_message(msg_str))
+        except ValueError:
+            frame = None
         
         if not frame:
             raise utils.BadMessageError("Unable to parse RENDER message", message)
         elif not self.server.verified() or self.task:
             self.connection.send(armb.new_reject_render_message(frame))
         else:
-            print(f"Rendering frame {frame}...")
-            # render render
+            self.task = RenderTask(frame)
     
     def handle_cancel_message(self):
         if self.task:
-            # self.task.cancel()
-            self.task = None
-            pass
-        
-        self.connection.send(armb.new_task_cancelled_message())
+            self.task.remote_cancelled = True
+            # TODO trigger ESC or something
+        else:
+            self.connection.send(armb.new_confirm_cancelled_message())
     
-    def send_render_complete_message(self):
-        self.connection.send(armb.new_render_complete_message(self.task.frame))
+    def handle_render_complete(self, scene, bpy_context):
+        if self.task.remote_cancelled:
+            self.connection.send(armb.new_confirm_cancelled_message())
+        else:
+            self.connection.send(armb.new_render_complete_message(self.task.frame))
+        
+        self.task = None
+        
+    def handle_render_cancel(self, scene, bpy_context):
+        if self.task.remote_cancelled:
+            self.connection.send(armb.new_confirm_cancelled_message())
+        else:
+            self.task.started = False
+            # self.task.attempts += 1
