@@ -36,11 +36,24 @@ def set_render_callbacks(finished_callback, cancelled_callback):
         bpy.app.handlers.render_cancel.append(cancelled_callback)
 
 def clear_render_callbacks():
-    bpy.app.handlers.render_complete.clear()
-    bpy.app.handlers.render_cancel.clear()
-    
+    if bpy:
+        bpy.app.handlers.render_complete.clear()
+        bpy.app.handlers.render_cancel.clear()
+
 def render_frame(frame, root_path):
     if bpy:
         bpy.context.scene.render.filepath = root_path + str(frame)
         bpy.context.scene.frame_set(frame)
         bpy.ops.render.render(write_still=True)
+
+def rendered_filename(frame):
+    if bpy:
+        scene = bpy.context.scene
+        
+        if scene.render.use_file_extension:
+            return bpy.path.abspath(f"{frame}{scene.render.file_extension}")
+        return bpy.path.abspath(str(frame))
+    return f"{frame}.png"
+
+def rendered_frame_path(frame, root_path):
+    return root_path + rendered_filename(frame)

@@ -99,7 +99,7 @@ class WorkerView:
         frame = armb.parse_reject_render_message(msg_str)
         
         if frame is None:
-            self.err = utils.BadMessageError("Unable to parse REJECT message", message)
+            self.err = utils.BadMessageError("Unable to parse REJECT RENDER message", message)
         elif job:
             job.unassign_frame(int(frame))
     
@@ -109,11 +109,39 @@ class WorkerView:
     def handle_render_complete_message(self, job, message, msg_str):
         try:
             frame = int(armb.parse_render_complete_message(msg_str))
-        except ValueError:
+        except ValueError as e:
+            print(e)
             self.err = utils.BadMessageError("Unable to parse COMPLETE RENDER message", message)
+            return
         
         if job:
             job.mark_rendered(frame)
+            self.status = WorkerView.STATUS_READY
+    
+    def handle_reject_upload_message(self, job, message, msg_str):
+        try:
+            frame = int(armb.parse_reject_upload_message(msg_str))
+        except ValueError as e:
+            print(e)
+            self.err = utils.BadMessageError("Unable to parse RJECT UPLOAD message", message)
+            return
+        
+        if job:
+            job.mark_irretrievable(frame)
+            self.status = WorkerView.STATUS_READY
+    
+    def handle_upload_complete_message(self, output_dir, job, message, msg_str):
+        try:
+            frame_str, filename = armb.parse_complete_upload_message(msg_str)
+            frame = int(frame_str)
+        except (ValueError, TypeError) as e:
+            print(e)
+            self.err = utils.BadMessageError("Unable to parse COMPLETE UPLOAD message", message)
+            return
+        
+        if job:
+            job.mark_uploaded(frame)
+            job.write_frame(filename, output_dir, message.data)
             self.status = WorkerView.STATUS_READY
     
     def request_render_frame(self, job):
@@ -130,7 +158,7 @@ class WorkerView:
         frame = job.next_for_uploading(self)
         
         if frame:
-            self.connection.send(armb.request_upload_frame(frame))
+            self.connection.send(armb.new_request_upload_message(frame))
             self.status = WorkerView.STATUS_UPLOADING
     
     def cancel_task(self):

@@ -4,6 +4,7 @@ class FrameAssignment:
         self.assignee = None
         self.rendered = False
         self.uploaded = False
+        self.irretrievable = False
     
     def assign(self, worker):
         self.assignee = worker
@@ -27,6 +28,7 @@ class RenderJob:
         self.frame_count = frame_end - frame_start + 1
         self.frames_rendered = 0
         self.frames_uploaded = 0
+        self.frames_irretrievable = 0
         self.frame_assignments = [ FrameAssignment(n) for n in range(frame_start, frame_end+1) ]
         self.settings = settings
         
@@ -39,7 +41,7 @@ class RenderJob:
         return self.frames_rendered == self.frame_count
     
     def uploading_complete(self):
-        return self.frames_uploaded == self.frame_count
+        return (self.frames_uploaded + self.frames_irretrievable) == self.frame_count
     
     def assign_next_frame(self, worker):
         for frame in self.frame_assignments:
@@ -56,7 +58,7 @@ class RenderJob:
     
     def next_for_uploading(self, worker):
         for frame in self.frame_assignments:
-            if frame.assignee is worker and not frame.uploaded:
+            if frame.assignee is worker and not (frame.uploaded or frame.irretrievable):
                 return frame.frame_number
     
     def mark_rendered(self, fnum):
@@ -66,6 +68,14 @@ class RenderJob:
             if not frame.rendered:
                 self.frames_rendered += 1
                 frame.rendered = True
+    
+    def mark_irretrievable(self, fnum):
+        if self.frame_start <= fnum <= self.frame_end:
+            frame = self.frame_assignments[fnum - self.frame_start]
+            
+            if not frame.irretrievable:
+                self.frames_irretrievable += 1
+                frame.irretrievable = True
     
     def mark_uploaded(self, fnum):
         if self.frame_start <= fnum <= self.frame_end:
@@ -77,3 +87,7 @@ class RenderJob:
     
     def available(self, frame):
         return not frame.assigned() or not frame.assignee.ok()
+    
+    def write_frame(self, filename, directory, data):
+        with open(directory+filename, 'wb') as f:
+            f.write(data)

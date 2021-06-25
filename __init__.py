@@ -14,7 +14,6 @@ bl_info = {
 import bpy
 from .src.worker.worker import Worker
 from .src.server.server import Server, WorkerView
-# from .src.server.render_job import RenderJob
 from .src.blender.blender import create_render_job
 
 class ARMBController:
@@ -33,7 +32,7 @@ class ARMBController:
         return self.node_type == 'SERVER'
     
     def worker_start(self, output_dir, port):
-        self.worker = Worker(output_dir, port, timeout=5)
+        self.worker = Worker(bpy.path.abspath(output_dir), port, timeout=5)
         self.worker.start()
         self.node_type = 'WORKER'
     
@@ -52,7 +51,7 @@ class ARMBController:
             return "READY"
     
     def server_start(self, output_dir):
-        self.server = Server(output_dir, timeout=5)
+        self.server = Server(bpy.path.abspath(output_dir), timeout=5)
         self.node_type = 'SERVER'
         bpy.context.scene.armb.worker_list.clear()
         bpy.context.scene.armb.worker_index = 0
@@ -81,7 +80,7 @@ class ARMBController:
             if self.worker.closed:
                 self.worker.restart()
             else:
-                self.worker.update()
+                self.worker.update() # TODO this can fail!!
         elif self.is_server():
             self.server.update()
     

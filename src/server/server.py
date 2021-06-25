@@ -54,12 +54,16 @@ class Server:
             worker.handle_identity_message(message, msg_str)
         elif msg_str.startswith("CONFIRM SYNCHRONIZE "):
             worker.handle_confirm_sync_message(message, msg_str)
-        elif msg_str.startswith("REJECT "):
+        elif msg_str.startswith("REJECT RENDER "):
             worker.handle_reject_render_message(self.job, message, msg_str)
         elif msg_str.startswith("CONFIRM CANCEL"):
             worker.handle_confirm_cancel_message()
         elif msg_str.startswith("COMPLETE RENDER "):
             worker.handle_render_complete_message(self.job, message, msg_str)
+        elif msg_str.startswith("REJECT UPLOAD "):
+            worker.handle_reject_upload_message(self.job, message, msg_str)
+        elif msg_str.startswith("COMPLETE UPLOAD "):
+            worker.handle_upload_complete_message(self.output_dir, self.job, message, msg_str)
         else:
             worker.err = utils.BadMessageError("Unable to parse unknown message", message)
     

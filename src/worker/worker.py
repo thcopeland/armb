@@ -1,11 +1,11 @@
-import socket
+import socket, os.path
 from ..protocol.connection import ARMBConnection, ARMBMessageTimeoutError, ARMBMessageFormatError
 from ..protocol import armb
 from ..shared.render_settings import RenderSettings
 from ..blender import blender
 from ..shared import utils
 from .server_view import ServerView
-from .task import RenderTask, UploadTask
+from .task import RenderTask
 
 class Worker:
     def __init__(self, output_dir, port, timeout=10):
@@ -94,6 +94,8 @@ class Worker:
             self.handle_synchronize_message(message, msg_str)
         elif msg_str.startswith("RENDER "):
             self.handle_render_message(message, msg_str)
+        elif msg_str.startswith("UPLOAD "):
+            self.handle_upload_message(message, msg_str)
         elif msg_str.startswith("CANCEL"):
             self.handle_cancel_message()
         else:
@@ -118,19 +120,33 @@ class Worker:
         try:
             frame = int(armb.parse_request_render_message(msg_str))
         except ValueError:
-            frame = None
-        
-        if not frame:
             raise utils.BadMessageError("Unable to parse RENDER message", message)
-        elif not self.server.verified() or self.task:
+        
+        if not self.server.verified() or self.task:
             self.connection.send(armb.new_reject_render_message(frame))
         else:
             self.task = RenderTask(frame)
     
+    def handle_upload_message(self, message, msg_str):
+        try:
+            frame = int(armb.parse_request_upload_message(msg_str))
+            filepath = blender.rendered_frame_path(frame, self.output_dir)
+        except ValueError:
+            raise utils.BadMessageError("Unable to parse UPLOAD message", message)
+        
+        if not self.server.verified():
+            self.connection.send(armb.new_reject_upload_message(frame))
+        else:
+            try:
+                with open(filepath, "rb") as f:
+                    self.connection.send(armb.new_complete_upload_message(frame, os.path.basename(filepath)), f.read())
+            except FileNotFoundError:
+                print("Unable to open", filepath)
+                self.connection.send(armb.new_reject_upload_message(frame))
+    
     def handle_cancel_message(self):
         if self.task:
             self.task.remote_cancelled = True
-            # TODO trigger ESC or something
         else:
             self.connection.send(armb.new_confirm_cancelled_message())
     

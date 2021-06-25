@@ -13,6 +13,9 @@ while True:
     t += 1
     print(".", end="", flush=True)
     
+    if (t == 15):
+        x.workers[0].status = 'READY'
+    
     if (t == 20):
         x.stop_job()
         
