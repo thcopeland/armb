@@ -15,12 +15,39 @@ class Worker:
         self.socket = None
         self.connection = None
         self.server = None
+        self.err = None
 
         self.task = None
         self.closed = False
     
     def connected(self):
         return self.connection and self.connection.ok() and not self.closed
+    
+    def ok(self):
+        return self.error() is None
+    
+    def error(self):
+        if self.err:
+            return self.err
+        elif self.connection and self.connection.error:
+            return self.connection.error
+    
+    def error_description(self):
+        error = self.error()
+        
+        if error:
+            if isinstance(error, ConnectionRefusedError):
+                return "Unable to connect"
+            elif isinstance(error, ConnectionError):
+                return "Connection lost or rejected"
+            elif isinstance(error, ARMBMessageFormatError):
+                return "Received an invalid message (check ARMB versions)"
+            elif isinstance(error, ARMBMessageTimeoutError):
+                return "Connection timed out"
+            elif isinstance(error, utils.BadMessageError):
+                return "Received an unknown message (is this an ARMB server?)"
+            else:
+                return "Internal Error: " + str(error)
     
     def start(self):
         blender.set_render_callbacks(self.handle_render_complete, self.handle_render_cancel)
@@ -42,6 +69,7 @@ class Worker:
         self.server = None
         self.connection = None
         self.closed = False
+        self.err = None
 
     def stop(self):
         self.closed = True
@@ -51,27 +79,27 @@ class Worker:
         self.socket.close()
     
     def update(self):
-        if not self.closed:
-            readable, writeable = utils.socket_status(self.socket)
-            if readable:
-                if self.connected():
-                    self.reject_connection()
-                else:
-                    self.accept_connection()
-        
-        if self.connected():
-            readable, writeable = utils.socket_status(self.connection.socket)
-            self.connection.update(readable, writeable)
+        if self.ok():
+            if not self.closed:
+                readable, writeable = utils.socket_status(self.socket)
+                if readable:
+                    if self.connected():
+                        self.reject_connection()
+                    else:
+                        self.accept_connection()
             
-            if self.connection.finished_receiving():
-                self.handle_message(self.connection.receive())
+            if self.connected():
+                readable, writeable = utils.socket_status(self.connection.socket)
+                self.connection.update(readable, writeable)
                 
-            if self.task and isinstance(self.task, RenderTask) and not self.task.started:
-                self.task.started = True
-                blender.render_frame(self.task.frame, self.output_dir)
-            
-        elif self.connection and self.connection.closed:
-            self.stop()
+                if self.connection.finished_receiving():
+                    self.handle_message(self.connection.receive())
+                    
+                if self.task and isinstance(self.task, RenderTask) and not self.task.started:
+                    self.task.started = True
+                    blender.render_frame(self.task.frame, self.output_dir)
+            elif self.connection and self.connection.closed:
+                self.stop()
     
     def accept_connection(self):
         sock, addr = self.socket.accept()
@@ -99,14 +127,14 @@ class Worker:
         elif msg_str.startswith("CANCEL"):
             self.handle_cancel_message()
         else:
-            raise utils.BadMessageError("Unable to parse unknown message", message)
+            self.err = utils.BadMessageError("Unable to parse unknown message", message)
     
     def handle_identity_message(self, message, msg_str):
         id = armb.parse_identity_message(msg_str)
         if id:
             self.server.identity = id
         else:
-            raise utils.BadMessageError("Unable to parse IDENTITY message", message)
+            self.err = utils.BadMessageError("Unable to parse IDENTITY message", message)
     
     def handle_synchronize_message(self, message, msg_str):
         id = armb.parse_sync_message(msg_str) or 0
@@ -119,30 +147,32 @@ class Worker:
     def handle_render_message(self, message, msg_str):
         try:
             frame = int(armb.parse_request_render_message(msg_str))
-        except ValueError:
-            raise utils.BadMessageError("Unable to parse RENDER message", message)
-        
-        if not self.server.verified() or self.task:
-            self.connection.send(armb.new_reject_render_message(frame))
-        else:
-            self.task = RenderTask(frame)
+            
+            if not self.server.verified() or self.task:
+                self.connection.send(armb.new_reject_render_message(frame))
+            else:
+                self.task = RenderTask(frame)
+        except ValueError as e:
+            print(e)
+            self.err = utils.BadMessageError("Unable to parse RENDER message", message)
     
     def handle_upload_message(self, message, msg_str):
         try:
             frame = int(armb.parse_request_upload_message(msg_str))
             filepath = blender.rendered_frame_path(frame, self.output_dir)
-        except ValueError:
-            raise utils.BadMessageError("Unable to parse UPLOAD message", message)
-        
-        if not self.server.verified():
-            self.connection.send(armb.new_reject_upload_message(frame))
-        else:
-            try:
-                with open(filepath, "rb") as f:
-                    self.connection.send(armb.new_complete_upload_message(frame, os.path.basename(filepath)), f.read())
-            except FileNotFoundError:
-                print("Unable to open", filepath)
+            
+            if not self.server.verified():
                 self.connection.send(armb.new_reject_upload_message(frame))
+            else:
+                try:
+                    with open(filepath, "rb") as f:
+                        self.connection.send(armb.new_complete_upload_message(frame, os.path.basename(filepath)), f.read())
+                except FileNotFoundError:
+                    print("Unable to open", filepath)
+                    self.connection.send(armb.new_reject_upload_message(frame))
+        except ValueError as e:
+            print(e)
+            self.err = utils.BadMessageError("Unable to parse UPLOAD message", message)
     
     def handle_cancel_message(self):
         if self.task:

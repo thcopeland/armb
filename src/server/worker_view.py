@@ -50,8 +50,10 @@ class WorkerView:
                 return "Received an invalid message (check ARMB versions)"
             elif isinstance(error, ARMBMessageTimeoutError):
                 return "Connection timed out"
+            elif isinstance(error, utils.BadMessageError):
+                return "Received an unknown message (is this an ARMB worker?)"
             else:
-                return str(error)
+                return "Internal Error: " + str(error)
     
     def start(self, block=False):
         def establish_connection():
