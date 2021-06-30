@@ -32,7 +32,7 @@ class Worker:
         elif self.connection and self.connection.error:
             return self.connection.error
     
-    def error_description(self):
+    def status_message(self):
         error = self.error()
         
         if error:
@@ -41,13 +41,19 @@ class Worker:
             elif isinstance(error, ConnectionError):
                 return "Connection lost or rejected"
             elif isinstance(error, ARMBMessageFormatError):
-                return "Received an invalid message (check ARMB versions)"
+                return "Received an invalid message (is this an ARMB server?)"
             elif isinstance(error, ARMBMessageTimeoutError):
                 return "Connection timed out"
             elif isinstance(error, utils.BadMessageError):
-                return "Received an unknown message (is this an ARMB server?)"
+                return "Received an unknown message (check version)"
             else:
-                return "Internal Error: " + str(error)
+                return f"Internal Error: {error}"
+        elif self.task:
+            return f"Rendering frame {self.task.frame}"
+        elif self.connected():
+            return f"Ready on port {self.port}"
+        else:
+            return f"Waiting on port {self.port}"
     
     def start(self):
         blender.set_render_callbacks(self.handle_render_complete, self.handle_render_cancel)

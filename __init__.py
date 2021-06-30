@@ -40,16 +40,6 @@ class ARMBController:
         self.worker.stop()
         self.node_type = None
     
-    def worker_status(self):
-        if not self.worker.ok():
-            return "ERROR"
-        elif not self.worker.connected():
-            return "WAITING"
-        elif self.worker.task:
-            return "WORKING"
-        else:
-            return "READY"
-    
     def server_start(self, output_dir):
         self.server = Server(bpy.path.abspath(output_dir), timeout=5)
         self.node_type = 'SERVER'
@@ -81,8 +71,6 @@ class ARMBController:
                 self.worker.restart()
             elif self.worker.ok():
                 self.worker.update()
-            elif not self.worker.closed:
-                self.worker.stop()
         elif self.is_server():
             self.server.update()
     
@@ -316,16 +304,11 @@ class ARMB_PT_UI(bpy.types.Panel):
 
             layout.operator("wm.disconnect_armb_server")
         else:
-            row = layout.row()
             if ARMB.worker.ok():
-                row.label(text=f"Running on port {ARMB.worker.port}")
+                layout.label(text=ARMB.worker.status_message())
             else:
-                row.label(text="Stopped")
-            row.label(text=ARMB.worker_status())
-            
-            if not ARMB.worker.ok():
-                layout.label(text=ARMB.worker.error_description())
-            
+                layout.label(text=ARMB.worker.status_message(), icon='ERROR')
+
             layout.operator("wm.disconnect_armb_worker", text="Disconnect")
 
 classes = [

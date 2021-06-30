@@ -47,13 +47,13 @@ class WorkerView:
             elif isinstance(error, ConnectionError):
                 return "Connection lost or rejected"
             elif isinstance(error, ARMBMessageFormatError):
-                return "Received an invalid message (check ARMB versions)"
+                return "Received an invalid message (is this an ARMB worker?)"
             elif isinstance(error, ARMBMessageTimeoutError):
                 return "Connection timed out"
             elif isinstance(error, utils.BadMessageError):
-                return "Received an unknown message (is this an ARMB worker?)"
+                return "Received an unknown message (check versions)"
             else:
-                return "Internal Error: " + str(error)
+                return f"Internal Error: {error}"
     
     def start(self, block=False):
         def establish_connection():
