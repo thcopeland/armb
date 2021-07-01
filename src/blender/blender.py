@@ -50,7 +50,8 @@ def render_frame(frame, root_path):
     if bpy:
         bpy.context.scene.render.filepath = root_path + str(frame)
         bpy.context.scene.frame_set(frame)
-        bpy.ops.render.render('INVOKE_DEFAULT', write_still=True)
+        return bpy.ops.render.render('INVOKE_DEFAULT', write_still=True)
+    return {'RUNNING_MODAL'}
 
 def rendered_filename(frame):
     if bpy:

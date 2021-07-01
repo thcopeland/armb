@@ -104,10 +104,10 @@ class Worker:
                 if self.connection.finished_receiving():
                     self.handle_message(self.connection.receive())
                     
-                if self.task and isinstance(self.task, RenderTask) and not self.task.started:
-                    self.task.started = True
-                    blender.apply_render_settings(self.render_settings)
-                    blender.render_frame(self.task.frame, self.output_dir)
+                if self.task and not self.task.started:
+                    if 'CANCELLED' not in blender.render_frame(self.task.frame, self.output_dir):
+                        self.task.started = True
+                        blender.apply_render_settings(self.render_settings)
             elif self.connection and self.connection.closed:
                 self.stop()
     
@@ -200,8 +200,12 @@ class Worker:
     def handle_render_cancel(self, scene, bpy_context):
         if self.task.remote_cancelled:
             self.connection.send(armb.new_confirm_cancelled_message())
+            self.task = None
         else:
             self.task.started = False
-            # self.task.attempts += 1
+            self.task.record_failed_attempt()
+            if self.task.failed():
+                self.connection.send(armb.new_reject_render_message(self.task.frame))
+                self.task = None
         
         blender.apply_render_settings(self.original_render_settings)

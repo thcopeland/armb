@@ -104,6 +104,7 @@ class WorkerView:
             self.err = utils.BadMessageError("Unable to parse REJECT RENDER message", message)
         elif job:
             job.unassign_frame(int(frame))
+            self.status = WorkerView.STATUS_READY
     
     def handle_confirm_cancel_message(self):
         self.status = WorkerView.STATUS_READY
