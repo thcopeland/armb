@@ -73,6 +73,8 @@ class ARMBController:
                 self.worker.update()
         elif self.is_server():
             self.server.update()
+            if self.server_working():
+                bpy.context.scene.armb.progress_indicator = round(self.server.job_progress()*100)
     
 ARMB = ARMBController()
 
@@ -95,6 +97,7 @@ class ARMBSettings(bpy.types.PropertyGroup):
     output_dir: bpy.props.StringProperty(name="Output Path", description="The directory in which to store rendered frames", subtype='DIR_PATH', default="//armb/")
     worker_list: bpy.props.CollectionProperty(type=ARMBWorkerListItem)
     worker_index: bpy.props.IntProperty(name="Active Worker Index", default=0)
+    progress_indicator: bpy.props.FloatProperty(name="Progress", subtype='PERCENTAGE', min=0, max=100, precision=0, default=30)
 
 class ARMB_UL_WorkerList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
@@ -299,6 +302,10 @@ class ARMB_PT_UI(bpy.types.Panel):
             row = layout.row()
             row.operator("wm.start_armb_render", icon='RENDER_ANIMATION')
             row.operator("wm.cancel_armb_render", icon='CANCEL')
+            
+            if ARMB.server_working():
+                row = layout.row()
+                row.prop(scene.armb, "progress_indicator", slider=True)
             
             layout.template_list("ARMB_UL_WorkerList", "", bpy.context.scene.armb, "worker_list", bpy.context.scene.armb, "worker_index")
             

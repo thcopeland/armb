@@ -18,11 +18,7 @@ class FrameAssignment:
         return not self.assignee is None
 
 class RenderJob:
-    STATUS_RENDERING = 'RENDERING'
-    STATUS_UPLOADING = 'UPLOADING'
-    
     def __init__(self, frame_start, frame_end, settings):
-        self.status = RenderJob.STATUS_RENDERING
         self.frame_start = frame_start
         self.frame_end = frame_end
         self.frame_count = frame_end - frame_start + 1
@@ -33,7 +29,7 @@ class RenderJob:
         self.settings = settings
         
     def progress(self):
-        if self.status == RenderJob.STATUS_RENDERING:
+        if not self.rendering_complete():
             return self.frames_rendered / self.frame_count
         return self.frames_uploaded / self.frame_count
     

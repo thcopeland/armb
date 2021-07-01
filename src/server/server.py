@@ -35,6 +35,10 @@ class Server:
                 if worker.ok() and worker.status in { WorkerView.STATUS_RENDERING, WorkerView.STATUS_UPLOADING }:
                     worker.cancel_task()
     
+    def job_progress(self):
+        if self.job:
+            return self.job.progress()
+    
     def update(self):
         for worker in self.workers:
             if worker.ok() and worker.connected():
