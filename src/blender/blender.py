@@ -19,11 +19,11 @@ def apply_render_settings(settings):
     if bpy and settings is not None:
         props = bpy.context.scene.render
         prefs = bpy.context.preferences
-        
+
         props.resolution_x = settings.resolution_x
         props.resolution_y = settings.resolution_y
         props.resolution_percentage = settings.percentage
-        
+
         if settings.display_mode in {'SCREEN', 'AREA', 'WINDOW', 'NONE'}:
             prefs.view.render_display_type = settings.display_mode
 
@@ -56,7 +56,7 @@ def render_frame(frame, root_path):
 def rendered_filename(frame):
     if bpy:
         scene = bpy.context.scene
-        
+
         if scene.render.use_file_extension:
             return bpy.path.abspath(f"{frame}{scene.render.file_extension}")
         return bpy.path.abspath(str(frame))

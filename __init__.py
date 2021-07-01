@@ -21,50 +21,50 @@ class ARMBController:
         self.node_type = None # SERVER, WORKER
         self.worker = None
         self.server = None
-    
+
     def started(self):
         return self.node_type is not None
-    
+
     def is_worker(self):
         return self.node_type == 'WORKER'
-    
+
     def is_server(self):
         return self.node_type == 'SERVER'
-    
+
     def worker_start(self, output_dir, port):
         self.worker = Worker(bpy.path.abspath(output_dir), port, timeout=5)
         self.worker.start()
         self.node_type = 'WORKER'
-    
+
     def worker_stop(self):
         self.worker.stop()
         self.node_type = None
-    
+
     def server_start(self, output_dir):
         self.server = Server(bpy.path.abspath(output_dir), timeout=5)
         self.node_type = 'SERVER'
         bpy.context.scene.armb.worker_list.clear()
         bpy.context.scene.armb.worker_index = 0
-    
+
     def server_stop(self):
         self.server.remove_all_workers()
         self.node_type = None
-    
+
     def server_add_worker(self, host, port):
         self.server.add_worker(host, port)
-        
+
     def server_remove_worker(self, index):
         self.server.remove_worker(index)
-    
+
     def server_working(self):
         return self.server.job and not self.server.job.uploading_complete()
-    
+
     def server_start_render(self):
         self.server.start_job(create_render_job(display_mode=bpy.context.scene.armb.render_display_mode))
-    
+
     def server_cancel_render(self):
         self.server.stop_job()
-    
+
     def update(self):
         if self.is_worker():
             if self.worker.closed and not self.worker.error():
@@ -75,7 +75,7 @@ class ARMBController:
             self.server.update()
             if self.server_working():
                 bpy.context.scene.armb.progress_indicator = round(self.server.job_progress()*100)
-    
+
 ARMB = ARMBController()
 
 class ARMBWorkerListItem(bpy.types.PropertyGroup):
@@ -102,7 +102,7 @@ class ARMBSettings(bpy.types.PropertyGroup):
 class ARMB_UL_WorkerList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         worker = ARMB.server.workers[index]
-        
+
         if not worker.connected() or worker.status == WorkerView.STATUS_INITIALIZING:
             status_icon = 'LAYER_USED'
         elif worker.status == WorkerView.STATUS_READY:
@@ -119,7 +119,7 @@ class ARMB_UL_WorkerList(bpy.types.UIList):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             if not worker.connected() or not worker.ok():
                 layout.enabled = False
-                            
+
             layout.label(text=(worker.identity or item.temp_name), icon=status_icon)
 
             if worker.error():
@@ -135,26 +135,26 @@ class ARMB_OT_AddWorker(bpy.types.Operator):
     bl_idname = "wm.add_armb_worker"
     bl_label = "Add worker"
     bl_description = "Connect to an ARMB worker"
-    
+
     worker_ip: bpy.props.StringProperty(name="IP Address", description="The IP address of the computer the worker is running on, e.g. 10.0.0.50")
     worker_port: bpy.props.StringProperty(name="Port", description="The port the worker is running on", default="7210")
-    
+
     def execute(self, context):
         try:
             port = int(self.worker_port)
             ARMB.server_add_worker(self.worker_ip, port)
-            
+
             new_item = context.scene.armb.worker_list.add()
             new_item.temp_name = f"{self.worker_ip}:{self.worker_port}"
             new_item.host = self.worker_ip
             new_item.port = self.worker_port
-            
+
             self.report({'INFO'}, f"Connecting to worker at {self.worker_ip}:{self.worker_port}")
         except ValueError:
             self.report({'WARNING'}, f"{new_item.port} is not a valid port number")
-        
+
         return {'FINISHED'}
-    
+
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
@@ -162,11 +162,11 @@ class ARMB_OT_RemoveWorker(bpy.types.Operator):
     bl_idname = "wm.remove_armb_worker"
     bl_label = "Remove worker"
     bl_description = "Disconnect from an ARMB worker"
-    
+
     @classmethod
     def poll(cls, context):
         return 0 <= context.scene.armb.worker_index < len(context.scene.armb.worker_list)
-    
+
     def execute(self, context):
         ARMB.server_remove_worker(context.scene.armb.worker_index)
         context.scene.armb.worker_list.remove(context.scene.armb.worker_index)
@@ -176,9 +176,9 @@ class ARMB_OT_StartWorker(bpy.types.Operator):
     bl_idname = "wm.start_armb_worker"
     bl_label = "Start Worker"
     bl_description = "Start an ARMB worker"
-    
+
     port: bpy.props.StringProperty(name="Worker Port", description="The port to run on", default="7210")
-    
+
     def execute(self, context):
         try:
             port = int(self.port)
@@ -189,9 +189,9 @@ class ARMB_OT_StartWorker(bpy.types.Operator):
             self.report({'WARNING'}, f"{self.port} is not a valid port number")
         except OSError as e:
             self.report({'WARNING'}, f"Unable to start worker on port {self.port}")
-        
+
         return {'FINISHED'}
-    
+
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
@@ -199,7 +199,7 @@ class ARMB_OT_DisconnectWorker(bpy.types.Operator):
     bl_idname = "wm.disconnect_armb_worker"
     bl_label = "Disconnect"
     bl_description = "Cancel active render and disconnect from server"
-    
+
     def execute(self, context):
         ARMB.worker_stop()
         self.report({'INFO'}, "Successfully stopped worker")
@@ -209,7 +209,7 @@ class ARMB_OT_StartServer(bpy.types.Operator):
     bl_idname = "wm.start_armb_server"
     bl_label = "Start Server"
     bl_description = "Start an ARMB server"
-    
+
     def execute(self, context):
         ARMB.server_start(context.scene.armb.output_dir)
         bpy.ops.wm.armb_update_timer()
@@ -220,21 +220,21 @@ class ARMB_OT_DisconnectServer(bpy.types.Operator):
     bl_idname = "wm.disconnect_armb_server"
     bl_label = "Disconnect"
     bl_description = "Cancel active render and disconnect from workers"
-    
+
     def execute(self, context):
         ARMB.server_stop()
         self.report({'INFO'}, "Successfully stopped server")
         return {'FINISHED'}
-    
+
 class ARMB_OT_StartRender(bpy.types.Operator):
     bl_idname = "wm.start_armb_render"
     bl_label = "Render"
     bl_description = "Start rendering active scene on workers"
-    
+
     @classmethod
     def poll(cls, context):
         return not ARMB.server_working()
-    
+
     def execute(self, context):
         ARMB.server_start_render()
         return {'FINISHED'}
@@ -243,11 +243,11 @@ class ARMB_OT_CancelRender(bpy.types.Operator):
     bl_idname = "wm.cancel_armb_render"
     bl_label = "Cancel"
     bl_description = "Cancel the current render"
-    
+
     @classmethod
     def poll(cls, context):
         return ARMB.server_working()
-    
+
     def execute(self, context):
         ARMB.server_cancel_render()
         return {'FINISHED'}
@@ -282,45 +282,45 @@ class ARMB_PT_UI(bpy.types.Panel):
     bl_region_type = 'WINDOW'
     bl_context = 'render'
     bl_order = 15
-    
+
     def draw(self, context):
         layout = self.layout
         scene = context.scene
-        
+
         if not ARMB.started():
             row = layout.row()
             row.scale_y = 1.5
             row.operator("wm.start_armb_worker")
-            
+
             row = layout.row()
             row.scale_y = 1.5
             row.operator("wm.start_armb_server")
-            
+
             layout.separator()
             layout.prop(scene.armb, "output_dir")
         elif ARMB.node_type == 'SERVER':
             row = layout.row()
             row.operator("wm.start_armb_render", icon='RENDER_ANIMATION')
             row.operator("wm.cancel_armb_render", icon='CANCEL')
-            
+
             if ARMB.server_working():
                 row = layout.row()
                 row.prop(scene.armb, "progress_indicator", slider=True)
-            
+
             layout.template_list("ARMB_UL_WorkerList", "", bpy.context.scene.armb, "worker_list", bpy.context.scene.armb, "worker_index")
-            
+
             row = layout.row()
             row.operator("wm.add_armb_worker", icon='ADD')
             row.operator("wm.remove_armb_worker", icon='REMOVE')
-            
+
             layout.separator()
-            
+
             row = layout.row()
             row.label(text="Render display mode: ")
             row.prop(scene.armb, "render_display_mode", text="")
-            
+
             layout.prop(scene.armb, "render_on_server")
-            
+
             layout.separator()
 
             layout.operator("wm.disconnect_armb_server")
@@ -351,18 +351,17 @@ classes = [
 def register():
     for c in classes:
         bpy.utils.register_class(c)
-    
+
     bpy.types.Scene.armb = bpy.props.PointerProperty(type=ARMBSettings)
 
 def unregister():
     for c in classes:
         bpy.utils.unregister_class(c)
-    
+
     del bpy.types.Scene.armb
 
 
 if __name__ == "__main__":
     register()
-    
+
     bpy.context.scene.armb.worker_list.clear()
-        

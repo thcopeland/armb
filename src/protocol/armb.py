@@ -3,7 +3,7 @@ from ..shared.render_settings import RenderSettings
 
 def first_match_group(rexp, str):
     match = re.match(rexp, str)
-    
+
     if match:
         return match.group(1)
 
@@ -30,7 +30,7 @@ def new_request_render_message(frame):
 
 def parse_request_render_message(message):
     return first_match_group("RENDER (-?\d+)", message)
-    
+
 def new_reject_render_message(frame):
     return bytes(f"REJECT RENDER {frame}".encode())
 
@@ -66,6 +66,6 @@ def new_complete_upload_message(frame, filename):
 
 def parse_complete_upload_message(message):
     match = re.match("COMPLETE UPLOAD (-?\d+) (\S+)", message) # generated filenames contain no whitespace
-    
+
     if match:
         return match.groups()

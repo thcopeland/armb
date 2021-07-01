@@ -9,7 +9,7 @@ class RenderSettings:
             "percentage": 100,
             "display_mode": 'AREA'
         }
-        
+
         for prop in serialized.split(","):
             m = re.match("(\w+)=(\w+)", prop)
             if m:
@@ -17,16 +17,16 @@ class RenderSettings:
                 if val.isnumeric():
                     val = int(val)
                 props[name] = val
-        
+
         return RenderSettings(props["resolution_x"], props["resolution_y"], props["percentage"], props["display_mode"])
-    
+
     def __init__(self, res_x, res_y, percent, display_mode):
         self.resolution_x = res_x
         self.resolution_y = res_y
         self.percentage = percent
         self.display_mode = display_mode
         self.synchronization_id = random.getrandbits(32)
-    
+
     def serialize(self):
         data = [
             ("resolution_x", self.resolution_x),
@@ -34,5 +34,5 @@ class RenderSettings:
             ("percentage", self.percentage),
             ("display_mode", self.display_mode)
         ]
-        
+
         return ",".join(map(lambda x: "{}={}".format(*x), data))
