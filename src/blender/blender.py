@@ -11,23 +11,29 @@ except ImportError:
 def create_render_settings():
     if bpy:
         props = bpy.context.scene.render
-        return RenderSettings(props.resolution_x, props.resolution_y, props.resolution_percentage)
+        prefs = bpy.context.preferences
+        return RenderSettings(props.resolution_x, props.resolution_y, props.resolution_percentage, prefs.view.render_display_type)
     return RenderSettings(1920, 1280, 100)
 
 def apply_render_settings(settings):
-    if bpy:
+    if bpy and settings is not None:
         props = bpy.context.scene.render
+        prefs = bpy.context.preferences
         
         props.resolution_x = settings.resolution_x
         props.resolution_y = settings.resolution_y
         props.resolution_percentage = settings.percentage
-    else:
-        print(f"Render Settings: {settings.resolution_x}x{settings.resolution_y} at {settings.percentage}%")
+        
+        if settings.display_mode in {'SCREEN', 'AREA', 'WINDOW', 'NONE'}:
+            prefs.view.render_display_type = settings.display_mode
 
-def create_render_job():
+def create_render_job(display_mode=None):
     if bpy:
         scene = bpy.context.scene
-        return RenderJob(scene.frame_start, scene.frame_end, create_render_settings())
+        settings = create_render_settings()
+        if display_mode is not None:
+            settings.display_mode = display_mode
+        return RenderJob(scene.frame_start, scene.frame_end, settings)
     return RenderJob(1, 250, create_render_settings())
 
 def set_render_callbacks(finished_callback, cancelled_callback):
@@ -44,7 +50,7 @@ def render_frame(frame, root_path):
     if bpy:
         bpy.context.scene.render.filepath = root_path + str(frame)
         bpy.context.scene.frame_set(frame)
-        bpy.ops.render.render(write_still=True)
+        bpy.ops.render.render('INVOKE_DEFAULT', write_still=True)
 
 def rendered_filename(frame):
     if bpy:

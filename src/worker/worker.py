@@ -17,6 +17,8 @@ class Worker:
         self.server = None
         self.err = None
 
+        self.render_settings = None
+        self.original_render_settings = blender.create_render_settings()
         self.task = None
         self.closed = False
     
@@ -80,6 +82,7 @@ class Worker:
     def stop(self):
         self.closed = True
         blender.clear_render_callbacks()
+        blender.apply_render_settings(self.original_render_settings)
         if self.connection:
             self.connection.close()
         self.socket.close()
@@ -103,6 +106,7 @@ class Worker:
                     
                 if self.task and isinstance(self.task, RenderTask) and not self.task.started:
                     self.task.started = True
+                    blender.apply_render_settings(self.render_settings)
                     blender.render_frame(self.task.frame, self.output_dir)
             elif self.connection and self.connection.closed:
                 self.stop()
@@ -145,9 +149,7 @@ class Worker:
     def handle_synchronize_message(self, message, msg_str):
         id = armb.parse_sync_message(msg_str) or 0
         data = message.data.tobytes().decode()
-        
-        blender.apply_render_settings(RenderSettings.deserialize(data))
-        
+        self.render_settings = RenderSettings.deserialize(data)
         self.connection.send(armb.new_confirm_sync_message(id))
     
     def handle_render_message(self, message, msg_str):
@@ -192,6 +194,7 @@ class Worker:
         else:
             self.connection.send(armb.new_render_complete_message(self.task.frame))
         
+        blender.apply_render_settings(self.original_render_settings)
         self.task = None
         
     def handle_render_cancel(self, scene, bpy_context):
@@ -200,3 +203,5 @@ class Worker:
         else:
             self.task.started = False
             # self.task.attempts += 1
+        
+        blender.apply_render_settings(self.original_render_settings)

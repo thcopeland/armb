@@ -60,7 +60,7 @@ class ARMBController:
         return self.server.job and not self.server.job.uploading_complete()
     
     def server_start_render(self):
-        self.server.start_job(create_render_job())
+        self.server.start_job(create_render_job(display_mode=bpy.context.scene.armb.render_display_mode))
     
     def server_cancel_render(self):
         self.server.stop_job()
@@ -81,7 +81,16 @@ class ARMBWorkerListItem(bpy.types.PropertyGroup):
     host: bpy.props.StringProperty(name="Host IP", description="The IP address of the worker computer")
     port: bpy.props.StringProperty(name="Port", description="The port the worker process is running on")
 
+render_display_values = (
+    ('WINDOW', "New Window", "Render in a separate window"),
+    ('NONE', "Keep User Interface", "Show only the progress of the render"),
+    ('SCREEN', "Maximized Area", "Show the in-progress render fullscreen"),
+    ('AREA', "Image Editor (default)", "Show the in-progress render in the image viewer (default)"),
+    ('PREFERENCES', "User Preferences", "Use the value in User Preferences (Interface > Temporary Editors > Render In)")
+)
+
 class ARMBSettings(bpy.types.PropertyGroup):
+    render_display_mode: bpy.props.EnumProperty(name="Render display mode", description="How to display an in-progress render", default='AREA', items=render_display_values)
     render_on_server: bpy.props.BoolProperty(name="Render on server", description="Use the server computer as another rendering worker", default=True)
     output_dir: bpy.props.StringProperty(name="Output Path", description="The directory in which to store rendered frames", subtype='DIR_PATH', default="//armb/")
     worker_list: bpy.props.CollectionProperty(type=ARMBWorkerListItem)
@@ -297,8 +306,13 @@ class ARMB_PT_UI(bpy.types.Panel):
             row.operator("wm.add_armb_worker", icon='ADD')
             row.operator("wm.remove_armb_worker", icon='REMOVE')
             
+            layout.separator()
+            
             row = layout.row()
-            row.prop(scene.armb, "render_on_server")
+            row.label(text="Render display mode: ")
+            row.prop(scene.armb, "render_display_mode", text="")
+            
+            layout.prop(scene.armb, "render_on_server")
             
             layout.separator()
 
