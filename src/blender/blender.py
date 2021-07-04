@@ -48,7 +48,7 @@ def clear_render_callbacks():
 
 def render_frame(frame, root_path):
     if bpy:
-        bpy.context.scene.render.filepath = root_path + str(frame)
+        bpy.context.scene.render.filepath = root_path + "{:08}".format(frame)
         bpy.context.scene.frame_set(frame)
         return bpy.ops.render.render('INVOKE_DEFAULT', write_still=True)
     return {'RUNNING_MODAL'}
@@ -58,9 +58,9 @@ def rendered_filename(frame):
         scene = bpy.context.scene
 
         if scene.render.use_file_extension:
-            return bpy.path.abspath(f"{frame}{scene.render.file_extension}")
-        return bpy.path.abspath(str(frame))
-    return f"{frame}.png"
+            return bpy.path.abspath(f"{frame:08}{scene.render.file_extension}")
+        return bpy.path.abspath("{:08}".format(frame))
+    return f"{frame:08}.png"
 
 def rendered_frame_path(frame, root_path):
     return root_path + rendered_filename(frame)
