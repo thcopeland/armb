@@ -1,3 +1,5 @@
+import os
+
 class FrameAssignment:
     def __init__(self, frame_num):
         self.frame_number = frame_num
@@ -32,7 +34,7 @@ class RenderJob:
         if not self.rendering_complete():
             return self.frames_rendered / self.frame_count
         return self.frames_uploaded / self.frame_count
-    
+
     def rendering_complete(self):
         return self.frames_rendered == self.frame_count
 
@@ -85,5 +87,8 @@ class RenderJob:
         return not frame.assigned() or not frame.assignee.ok()
 
     def write_frame(self, filename, directory, data):
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
         with open(directory+filename, 'wb') as f:
             f.write(data)

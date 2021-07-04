@@ -1,4 +1,4 @@
-import socket, os.path
+import socket, os.path, shutil
 from ..protocol.connection import ARMBConnection, ARMBMessageTimeoutError, ARMBMessageFormatError
 from ..protocol import armb
 from ..shared.render_settings import RenderSettings
@@ -136,6 +136,8 @@ class Worker:
             self.handle_upload_message(message, msg_str)
         elif msg_str.startswith("CANCEL"):
             self.handle_cancel_message()
+        elif msg_str.startswith("CLEANUP"):
+            self.handle_cleanup_message()
         else:
             self.err = utils.BadMessageError("Unable to parse unknown message", message)
 
@@ -209,3 +211,6 @@ class Worker:
                 self.task = None
 
         blender.apply_render_settings(self.original_render_settings)
+
+    def handle_cleanup_message(self):
+        shutil.rmtree(self.output_dir)

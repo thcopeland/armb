@@ -59,6 +59,12 @@ class ARMBController:
     def server_working(self):
         return self.server.job and not self.server.job.uploading_complete()
 
+    def server_finished_job(self):
+        return self.server.job and self.server.job.uploading_complete()
+
+    def server_clean_workers(self):
+        self.server.clean_workers()
+
     def server_start_render(self):
         self.server.start_job(create_render_job(display_mode=bpy.context.scene.armb.render_display_mode))
 
@@ -87,7 +93,7 @@ render_display_values = (
     ('WINDOW', "New Window", "Render in a separate window"),
     ('NONE', "Keep User Interface", "Show only the progress of the render"),
     ('SCREEN', "Maximized Area", "Show the in-progress render fullscreen"),
-    ('AREA', "Image Editor (default)", "Show the in-progress render in the image viewer (default)"),
+    ('AREA', "Image Editor", "Show the in-progress render in the image viewer"),
     ('PREFERENCES', "User Preferences", "Use the value in User Preferences (Interface > Temporary Editors > Render In)")
 )
 
@@ -252,6 +258,22 @@ class ARMB_OT_CancelRender(bpy.types.Operator):
         ARMB.server_cancel_render()
         return {'FINISHED'}
 
+class ARMB_OT_CleanWorkers(bpy.types.Operator):
+    bl_idname = "wm.clean_armb_workers"
+    bl_label = "Clean Workers"
+    bl_description = "Delete rendered frames on workers"
+
+    def execute(self, context):
+        ARMB.server_clean_workers()
+        ARMB.server_cancel_render()
+        return {'FINISHED'}
+
+    def draw(self, context):
+        self.layout.label(text="This will delete all frames from all workers.", icon='ERROR')
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
 class ARMB_OT_UpdateTimer(bpy.types.Operator):
     bl_idname = "wm.armb_update_timer"
     bl_label = "ARMB Update Timer"
@@ -303,10 +325,6 @@ class ARMB_PT_UI(bpy.types.Panel):
             row.operator("wm.start_armb_render", icon='RENDER_ANIMATION')
             row.operator("wm.cancel_armb_render", icon='CANCEL')
 
-            if ARMB.server_working():
-                row = layout.row()
-                row.prop(scene.armb, "progress_indicator", slider=True)
-
             layout.template_list("ARMB_UL_WorkerList", "", bpy.context.scene.armb, "worker_list", bpy.context.scene.armb, "worker_index")
 
             row = layout.row()
@@ -322,6 +340,24 @@ class ARMB_PT_UI(bpy.types.Panel):
             layout.prop(scene.armb, "render_on_server")
 
             layout.separator()
+
+            if ARMB.server_working() or ARMB.server_finished_job():
+                box = layout.box()
+                if ARMB.server_working():
+                    box.label(text="Render in progress...")
+                else:
+                    box.label(text="Render complete!")
+
+                row = box.row()
+                row.label(text=f"{ARMB.server.job.frames_rendered}/{ARMB.server.job.frame_count} frames rendered")
+                row.label(text=f"{ARMB.server.job.frames_uploaded}/{ARMB.server.job.frame_count} frames uploaded")
+
+                if ARMB.server_working():
+                    box.prop(scene.armb, "progress_indicator", slider=True)
+                else:
+                    box.operator("wm.clean_armb_workers")
+
+                layout.separator()
 
             layout.operator("wm.disconnect_armb_server")
         else:
@@ -342,11 +378,15 @@ classes = [
     ARMB_OT_DisconnectServer,
     ARMB_OT_StartRender,
     ARMB_OT_CancelRender,
+    ARMB_OT_CleanWorkers,
     ARMB_OT_AddWorker,
     ARMB_OT_RemoveWorker,
     ARMB_OT_UpdateTimer,
     ARMB_PT_UI
 ]
+
+# TODO
+# Clean button, 000001.png, worker stats button, help button, server render
 
 def register():
     for c in classes:

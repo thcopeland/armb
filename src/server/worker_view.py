@@ -164,5 +164,8 @@ class WorkerView:
             self.connection.send(armb.new_request_upload_message(frame))
             self.status = WorkerView.STATUS_UPLOADING
 
+    def request_clean_frames(self):
+        self.connection.send(armb.new_request_cleanup_message())
+
     def cancel_task(self):
         self.connection.send(armb.new_cancel_task_message())

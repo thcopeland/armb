@@ -69,3 +69,6 @@ def parse_complete_upload_message(message):
 
     if match:
         return match.groups()
+
+def new_request_cleanup_message():
+    return bytes("CLEANUP".encode())

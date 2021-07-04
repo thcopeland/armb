@@ -30,14 +30,20 @@ class Server:
 
     def stop_job(self):
         if self.job:
+            if not self.job.uploading_complete():
+                for worker in self.workers:
+                    if worker.ok() and worker.status in { WorkerView.STATUS_RENDERING, WorkerView.STATUS_UPLOADING }:
+                        worker.cancel_task()
             self.job = None
-            for worker in self.workers:
-                if worker.ok() and worker.status in { WorkerView.STATUS_RENDERING, WorkerView.STATUS_UPLOADING }:
-                    worker.cancel_task()
 
     def job_progress(self):
         if self.job:
             return self.job.progress()
+
+    def clean_workers(self):
+        for worker in self.workers:
+            if worker.ok() and worker.connected():
+                worker.request_clean_frames()
 
     def update(self):
         for worker in self.workers:
