@@ -61,11 +61,11 @@ def new_reject_upload_message(frame):
 def parse_reject_upload_message(message):
     return first_match_group("REJECT UPLOAD (-?\d+)", message)
 
-def new_complete_upload_message(frame, filename):
-    return bytes(f"COMPLETE UPLOAD {frame} {filename}".encode())
+def new_complete_upload_message(frame, extension):
+    return bytes(f"COMPLETE UPLOAD {frame} {extension}".encode())
 
 def parse_complete_upload_message(message):
-    match = re.match("COMPLETE UPLOAD (-?\d+) (\S+)", message) # generated filenames contain no whitespace
+    match = re.match("COMPLETE UPLOAD (-?\d+) (\S*)", message) # generated filenames contain no whitespace
 
     if match:
         return match.groups()

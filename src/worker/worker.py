@@ -176,7 +176,7 @@ class Worker:
             else:
                 try:
                     with open(filepath, "rb") as f:
-                        self.connection.send(armb.new_complete_upload_message(frame, os.path.basename(filepath)), f.read())
+                        self.connection.send(armb.new_complete_upload_message(frame, blender.filename_extension()), f.read())
                 except FileNotFoundError:
                     print("Unable to open", filepath)
                     self.connection.send(armb.new_reject_upload_message(frame))

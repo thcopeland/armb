@@ -135,7 +135,7 @@ class WorkerView:
 
     def handle_upload_complete_message(self, output_dir, job, message, msg_str):
         try:
-            frame_str, filename = armb.parse_complete_upload_message(msg_str)
+            frame_str, extension = armb.parse_complete_upload_message(msg_str)
             frame = int(frame_str)
         except (ValueError, TypeError) as e:
             print(e)
@@ -144,7 +144,7 @@ class WorkerView:
 
         if job:
             job.mark_uploaded(frame)
-            job.write_frame(filename, output_dir, message.data)
+            job.write_frame(frame, extension, output_dir, message.data)
             self.status = WorkerView.STATUS_READY
 
     def request_render_frame(self, job):
