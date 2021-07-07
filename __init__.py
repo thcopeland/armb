@@ -109,7 +109,7 @@ class ARMB_UL_WorkerList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         worker = ARMB.server.workers[index]
 
-        if not worker.connected() or worker.status == WorkerView.STATUS_INITIALIZING:
+        if worker.ok() and not worker.connected() or worker.status == WorkerView.STATUS_INITIALIZING:
             status_icon = 'LAYER_USED'
         elif worker.status == WorkerView.STATUS_READY:
             status_icon = 'LAYER_ACTIVE'
@@ -274,6 +274,66 @@ class ARMB_OT_CleanWorkers(bpy.types.Operator):
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
+class ARMB_OT_CloseRenderSummary(bpy.types.Operator):
+    bl_idname = "wm.close_armb_render_summary"
+    bl_label = "Close"
+    bl_description = "Close the render summary"
+
+    @classmethod
+    def poll(cls, context):
+        return ARMB.server_finished_job()
+
+    def execute(self, context):
+        ARMB.server_cancel_render()
+        return {'FINISHED'}
+
+class ARMB_OT_ShowRenderStats(bpy.types.Operator):
+    bl_idname = "wm.show_armb_render_stats"
+    bl_label = "Statistics"
+    bl_description = "Show worker render statistics"
+
+    @classmethod
+    def poll(cls, context):
+        return ARMB.server_finished_job()
+
+    def draw(self, context):
+        stats = ARMB.server.job.worker_statistics()
+
+        row = self.layout.row()
+        split = row.split(factor=0.5)
+        col = split.column()
+        col.label(text="Name")
+        for worker in ARMB.server.workers:
+            if worker.identity:
+                col.label(text=worker.identity)
+            else:
+                col.label(text=f"{worker.address[0]}:{worker.address[1]}")
+
+        col = split.column()
+        col.label(text="Number")
+        for worker in ARMB.server.workers:
+            if worker in stats:
+                col.label(text=str(stats[worker][0]))
+            else:
+                col.label(text='0')
+
+        col = split.column()
+        col.label(text="Average Time")
+        for worker in ARMB.server.workers:
+            if worker in stats:
+                secs = stats[worker][1]
+                mins = int(secs/60)
+                hours = int(mins/60)
+                col.label(text=f"{(hours%60):02}:{(mins%60):02}:{secs:04.02}")
+            else:
+                col.label(text='-')
+
+    def execute(self, context):
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
 class ARMB_OT_UpdateTimer(bpy.types.Operator):
     bl_idname = "wm.armb_update_timer"
     bl_label = "ARMB Update Timer"
@@ -346,7 +406,12 @@ class ARMB_PT_UI(bpy.types.Panel):
                 if ARMB.server_working():
                     box.label(text="Render in progress...")
                 else:
-                    box.label(text="Render complete!")
+                    row = box.row()
+                    row.label(text="Render complete!")
+                    row = row.row()
+                    row.alignment = 'RIGHT'
+                    row.operator("wm.show_armb_render_stats")
+                    row.operator("wm.close_armb_render_summary", text="",  icon='X')
 
                 row = box.row()
                 row.label(text=f"{ARMB.server.job.frames_rendered}/{ARMB.server.job.frame_count} frames rendered")
@@ -379,14 +444,13 @@ classes = [
     ARMB_OT_StartRender,
     ARMB_OT_CancelRender,
     ARMB_OT_CleanWorkers,
+    ARMB_OT_CloseRenderSummary,
+    ARMB_OT_ShowRenderStats,
     ARMB_OT_AddWorker,
     ARMB_OT_RemoveWorker,
     ARMB_OT_UpdateTimer,
     ARMB_PT_UI
 ]
-
-# TODO
-# Clean button, 000001.png, worker stats button, help button, server render
 
 def register():
     for c in classes:

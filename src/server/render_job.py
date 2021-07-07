@@ -1,4 +1,4 @@
-import os, math
+import os, math, time
 
 class FrameAssignment:
     def __init__(self, frame_num):
@@ -7,17 +7,23 @@ class FrameAssignment:
         self.rendered = False
         self.uploaded = False
         self.irretrievable = False
+        self.elapsed = None
 
     def assign(self, worker):
         self.assignee = worker
         self.rendered = False
         self.uploaded = False
+        self.elapsed = time.time()
 
     def unassign(self):
         self.assignee = None
 
     def assigned(self):
-        return not self.assignee is None
+        return self.assignee is not None
+
+    def mark_rendered(self):
+        self.rendered = True
+        self.elapsed = time.time() - self.elapsed
 
 class RenderJob:
     def __init__(self, frame_start, frame_end, settings):
@@ -34,6 +40,21 @@ class RenderJob:
         if not self.rendering_complete():
             return self.frames_rendered / self.frame_count
         return self.frames_uploaded / self.frame_count
+
+    def worker_statistics(self):
+        stats = {}
+
+        for frame in self.frame_assignments:
+            if frame.assigned():
+                worker_stats = stats.get(frame.assignee, [0, 0.0])
+                worker_stats[0] += 1
+                worker_stats[1] += frame.elapsed
+                stats[frame.assignee] = worker_stats
+
+        for worker in stats:
+            stats[worker][1] /= stats[worker][0]
+
+        return stats
 
     def rendering_complete(self):
         return self.frames_rendered == self.frame_count
@@ -65,7 +86,7 @@ class RenderJob:
 
             if not frame.rendered:
                 self.frames_rendered += 1
-                frame.rendered = True
+                frame.mark_rendered()
 
     def mark_irretrievable(self, fnum):
         if self.frame_start <= fnum <= self.frame_end:

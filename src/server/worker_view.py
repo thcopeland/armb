@@ -21,6 +21,12 @@ class WorkerView:
         self.socket = None
         self.connection = None
 
+    def __eq__(self, other):
+        return self.identity == self.identity and self.address == other.address
+
+    def __hash__(self):
+        return hash((self.identity, self.address))
+
     def verified(self):
         return not self.identity is None
 
