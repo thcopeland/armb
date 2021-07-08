@@ -294,7 +294,7 @@ class ARMB_OT_ShowRenderStats(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return ARMB.server_finished_job()
+        return ARMB.server.job is not None
 
     def draw(self, context):
         stats = ARMB.server.job.worker_statistics()
@@ -324,7 +324,7 @@ class ARMB_OT_ShowRenderStats(bpy.types.Operator):
                 secs = stats[worker][1]
                 mins = int(secs/60)
                 hours = int(mins/60)
-                col.label(text=f"{(hours%60):02}:{(mins%60):02}:{secs:04.02}")
+                col.label(text=f"{(hours%60):02}:{(mins%60):02}:{secs:05.02f}")
             else:
                 col.label(text='-')
 
@@ -404,7 +404,9 @@ class ARMB_PT_UI(bpy.types.Panel):
             if ARMB.server_working() or ARMB.server_finished_job():
                 box = layout.box()
                 if ARMB.server_working():
-                    box.label(text="Render in progress...")
+                    row = box.row()
+                    row.label(text="Render in progress...")
+                    row.operator("wm.show_armb_render_stats")
                 else:
                     row = box.row()
                     row.label(text="Render complete!")

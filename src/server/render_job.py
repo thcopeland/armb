@@ -45,7 +45,7 @@ class RenderJob:
         stats = {}
 
         for frame in self.frame_assignments:
-            if frame.assigned():
+            if frame.assigned() and frame.rendered:
                 worker_stats = stats.get(frame.assignee, [0, 0.0])
                 worker_stats[0] += 1
                 worker_stats[1] += frame.elapsed
