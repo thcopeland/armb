@@ -2,6 +2,7 @@ import socket, selectors
 from ..protocol.connection import ARMBConnection, ARMBMessageTimeoutError, ARMBMessageFormatError
 from ..protocol import armb
 from .worker_view import WorkerView
+from .server_worker import ServerWorker
 from ..shared import utils
 
 class Server:
@@ -9,7 +10,10 @@ class Server:
         self.output_dir = output_dir
         self.timeout = timeout
         self.workers = []
+        self.server_worker = ServerWorker()
         self.job = None
+
+        self.enable_server_rendering()
 
     def add_worker(self, host, port):
         worker = WorkerView(host, port, self.timeout)
@@ -24,12 +28,21 @@ class Server:
             worker.stop()
         self.workers.clear()
 
+    def enable_server_rendering(self):
+        self.server_worker.enable()
+
+    def disable_server_rendering(self):
+        self.server_worker.disable()
+
     def start_job(self, job):
         if not self.job or self.job.uploading_complete():
             self.job = job
+            self.server_worker.synchronize(self.output_dir, self.job)
 
     def stop_job(self):
         if self.job:
+            self.server_worker.cancel()
+
             if not self.job.uploading_complete():
                 for worker in self.workers:
                     if worker.ok() and worker.status in { WorkerView.STATUS_RENDERING, WorkerView.STATUS_UPLOADING }:
@@ -46,6 +59,8 @@ class Server:
                 worker.request_clean_frames()
 
     def update(self):
+        self.server_worker.update()
+
         for worker in self.workers:
             if worker.ok() and worker.connected():
                 readable, writeable = utils.socket_status(worker.socket)

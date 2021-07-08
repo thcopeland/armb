@@ -46,9 +46,9 @@ def clear_render_callbacks():
         bpy.app.handlers.render_complete.clear()
         bpy.app.handlers.render_cancel.clear()
 
-def render_frame(frame, root_path):
+def render_frame(frame, root_path, generate=True):
     if bpy:
-        bpy.context.scene.render.filepath = f"{root_path}{frame}"
+        bpy.context.scene.render.filepath = f"{root_path}{frame}" if generate else root_path
         bpy.context.scene.frame_set(frame)
         return bpy.ops.render.render('INVOKE_DEFAULT', write_still=True)
     return {'RUNNING_MODAL'}

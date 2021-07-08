@@ -71,6 +71,13 @@ class ARMBController:
     def server_cancel_render(self):
         self.server.stop_job()
 
+    def server_update_server_rendering(self, val):
+        if self.is_server():
+            if val:
+                self.server.enable_server_rendering()
+            else:
+                self.server.disable_server_rendering()
+
     def update(self):
         if self.is_worker():
             if self.worker.closed and not self.worker.error():
@@ -97,9 +104,12 @@ render_display_values = (
     ('PREFERENCES', "User Preferences", "Use the value in User Preferences (Interface > Temporary Editors > Render In)")
 )
 
+def update_server_rendering(prop, context):
+    ARMB.server_update_server_rendering(prop.render_on_server)
+
 class ARMBSettings(bpy.types.PropertyGroup):
     render_display_mode: bpy.props.EnumProperty(name="Render display mode", description="How to display an in-progress render", default='AREA', items=render_display_values)
-    render_on_server: bpy.props.BoolProperty(name="Render on server", description="Use the server computer as another rendering worker", default=True)
+    render_on_server: bpy.props.BoolProperty(name="Render on server", description="Use the server computer as another rendering worker", default=True, update=update_server_rendering)
     output_dir: bpy.props.StringProperty(name="Output Path", description="The directory in which to store rendered frames", subtype='DIR_PATH', default="//armb/")
     worker_list: bpy.props.CollectionProperty(type=ARMBWorkerListItem)
     worker_index: bpy.props.IntProperty(name="Active Worker Index", default=0)
@@ -303,6 +313,8 @@ class ARMB_OT_ShowRenderStats(bpy.types.Operator):
         split = row.split(factor=0.5)
         col = split.column()
         col.label(text="Name")
+        if ARMB.server.server_worker in stats:
+            col.label(text="Server")
         for worker in ARMB.server.workers:
             if worker.identity:
                 col.label(text=worker.identity)
@@ -311,6 +323,8 @@ class ARMB_OT_ShowRenderStats(bpy.types.Operator):
 
         col = split.column()
         col.label(text="Number")
+        if ARMB.server.server_worker in stats:
+            col.label(text=str(stats[ARMB.server.server_worker][0]))
         for worker in ARMB.server.workers:
             if worker in stats:
                 col.label(text=str(stats[worker][0]))
@@ -319,12 +333,11 @@ class ARMB_OT_ShowRenderStats(bpy.types.Operator):
 
         col = split.column()
         col.label(text="Average Time")
+        if ARMB.server.server_worker in stats:
+            col.label(text=self.time_string(stats[ARMB.server.server_worker][1]))
         for worker in ARMB.server.workers:
             if worker in stats:
-                secs = stats[worker][1]
-                mins = int(secs/60)
-                hours = int(mins/60)
-                col.label(text=f"{(hours%60):02}:{(mins%60):02}:{secs:05.02f}")
+                col.label(text=self.time_string(stats[worker][1]))
             else:
                 col.label(text='-')
 
@@ -333,6 +346,11 @@ class ARMB_OT_ShowRenderStats(bpy.types.Operator):
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
+
+    def time_string(self, secs):
+        mins = int(secs/60)
+        hours = int(mins/60)
+        return f"{(hours%60):02}:{(mins%60):02}:{secs:05.02f}"
 
 class ARMB_OT_UpdateTimer(bpy.types.Operator):
     bl_idname = "wm.armb_update_timer"

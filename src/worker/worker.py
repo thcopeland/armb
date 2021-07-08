@@ -4,8 +4,8 @@ from ..protocol import armb
 from ..shared.render_settings import RenderSettings
 from ..blender import blender
 from ..shared import utils
+from ..shared.task import RenderTask
 from .server_view import ServerView
-from .task import RenderTask
 
 class Worker:
     def __init__(self, output_dir, port, timeout=10):

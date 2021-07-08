@@ -22,7 +22,7 @@ class WorkerView:
         self.connection = None
 
     def __eq__(self, other):
-        return self.identity == self.identity and self.address == other.address
+        return self.identity == other.identity and self.address == other.address
 
     def __hash__(self):
         return hash((self.identity, self.address))

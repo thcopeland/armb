@@ -107,11 +107,13 @@ class RenderJob:
     def available(self, frame):
         return not frame.assigned() or not frame.assignee.ok()
 
+    def filename(self, frame, extension, directory):
+        digits_necessary = math.ceil(math.log10(self.frame_end))
+        return f"{directory}{str(frame).rjust(digits_necessary, '0')}{extension}"
+
     def write_frame(self, frame, extension, directory, data):
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        digits_necessary = math.ceil(math.log10(self.frame_end))
-        filename = f"{directory}{str(frame).rjust(digits_necessary, '0')}{extension}"
-        with open(filename, 'wb') as f:
+        with open(self.filename(frame, extension, directory), 'wb') as f:
             f.write(data)
