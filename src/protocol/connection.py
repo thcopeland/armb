@@ -14,7 +14,7 @@ class ARMBMessageData:
         if match:
             msg_len, data_len = int(match.group(1), 16), int(match.group(2), 16)
             return ARMBMessageData(memoryview(header), memoryview(bytearray(msg_len)), memoryview(bytearray(data_len)), len(header), False)
-    
+
     def __init__(self, header=None, message=None, data=None, progress=0, outgoing=True):
         self.start = time.time()
         self.end = None
@@ -89,7 +89,7 @@ class ARMBConnection:
                 elif write:
                     self.__continue_sending()
                     if self.outgoing[0].complete():
-                        print(f"{self.outgoing[0].start}: Sent message \"{self.outgoing[0].message.tobytes().decode()}\" in {self.outgoing[0].elapsed()} seconds")
+                        # print(f"{self.outgoing[0].start}: Sent message \"{self.outgoing[0].message.tobytes().decode()}\" in {self.outgoing[0].elapsed()} seconds")
                         self.outgoing.popleft()
 
             if self.receiving() and time.time() - self.incoming[-1].start > self.msg_timeout:
@@ -97,8 +97,8 @@ class ARMBConnection:
             elif self.ok() and read:
                 if self.receiving():
                     self.__continue_receiving()
-                    if self.incoming[-1].complete():
-                        print(f"{self.incoming[-1].start}: Received message \"{self.incoming[-1].message.tobytes().decode()}\" in {self.incoming[-1].elapsed()} seconds")
+                    # if self.incoming[-1].complete():
+                        # print(f"{self.incoming[-1].start}: Received message \"{self.incoming[-1].message.tobytes().decode()}\" in {self.incoming[-1].elapsed()} seconds")
                 else:
                     self.incoming.append(ARMBMessageData(memoryview(bytearray(16)), memoryview(bytes(0)), memoryview(bytes(0))))
         except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError) as e:

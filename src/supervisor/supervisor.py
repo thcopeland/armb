@@ -93,7 +93,6 @@ class Supervisor:
             worker.err = utils.BadMessageError("Unable to parse unknown message", message)
 
     def send_message(self, worker):
-        print(worker.status)
         if worker.status == WorkerView.STATUS_READY:
             if self.job:
                 if not self.job.rendering_complete():
