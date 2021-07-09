@@ -86,6 +86,7 @@ class ARMBController:
                 self.worker.update()
         elif self.is_supervisor():
             self.supervisor.update()
+
             if self.supervisor_working():
                 bpy.context.window_manager.armb.progress_indicator = round(self.supervisor.job_progress()*100)
 
@@ -105,7 +106,7 @@ render_display_values = (
 )
 
 def update_supervisor_rendering(prop, context):
-    ARMB.supervisor_update_supervisor_rendering(prop.render_on_supervisor)
+    ARMB.supervisor_update_supervisor_rendering(context.window_manager.armb.render_on_supervisor)
 
 class ARMBSettings(bpy.types.PropertyGroup):
     render_display_mode: bpy.props.EnumProperty(name="Render display mode", description="How to display an in-progress render", default='AREA', items=render_display_values)

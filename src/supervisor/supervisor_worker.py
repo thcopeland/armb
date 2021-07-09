@@ -16,20 +16,17 @@ class SupervisorWorker:
         return hash(self.identity)
 
     def ok(self):
-        return self.enabled
+        return True
 
     def enable(self):
         self.enabled = True
-        blender.clear_render_callbacks()
-        blender.set_render_callbacks(self.handle_render_complete, self.handle_render_cancel)
+
+    def disable(self):
+        self.enabled = False
 
     def synchronize(self, output_dir, job):
         self.output_dir = output_dir
         self.job = job
-
-    def disable(self):
-        self.enabled = False
-        blender.clear_render_callbacks()
 
     def ready(self):
         return self.enabled and self.job and self.task is None
@@ -56,20 +53,23 @@ class SupervisorWorker:
             path = self.job.filename(self.task.frame, '', self.output_dir)
             if 'CANCELLED' not in blender.render_frame(self.task.frame, path, False):
                 self.task.started = True
-                blender.apply_render_settings(self.job.settings)
+                blender.set_render_callbacks(self.handle_render_complete, self.handle_render_cancel)
 
     def handle_render_complete(self, scene, bpy_context):
         if self.job:
             self.job.mark_rendered(self.task.frame)
             self.job.mark_uploaded(self.task.frame)
+            blender.clear_render_callbacks()
         self.task = None
 
     def handle_render_cancel(self, scene, bpy_context):
         if self.task.remote_cancelled:
+            blender.clear_render_callbacks()
             self.task = None
         else:
             self.task.started = False
             self.task.record_failed_attempt()
             if self.task.failed():
+                blender.clear_render_callbacks()
                 self.job.unassign_frame(self.task.frame)
                 self.task = None
