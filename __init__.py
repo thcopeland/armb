@@ -13,14 +13,14 @@ bl_info = {
 
 import bpy
 from .src.worker.worker import Worker
-from .src.server.server import Server, WorkerView
+from .src.supervisor.supervisor import Supervisor, WorkerView
 from .src.blender.blender import create_render_job
 
 class ARMBController:
     def __init__(self):
-        self.node_type = None # SERVER, WORKER
+        self.node_type = None # SUPERVISOR, WORKER
         self.worker = None
-        self.server = None
+        self.supervisor = None
 
     def started(self):
         return self.node_type is not None
@@ -28,8 +28,8 @@ class ARMBController:
     def is_worker(self):
         return self.node_type == 'WORKER'
 
-    def is_server(self):
-        return self.node_type == 'SERVER'
+    def is_supervisor(self):
+        return self.node_type == 'SUPERVISOR'
 
     def worker_start(self, output_dir, port):
         self.worker = Worker(bpy.path.abspath(output_dir), port, timeout=5)
@@ -40,43 +40,43 @@ class ARMBController:
         self.worker.stop()
         self.node_type = None
 
-    def server_start(self, output_dir):
-        self.server = Server(bpy.path.abspath(output_dir), timeout=5)
-        self.node_type = 'SERVER'
+    def supervisor_start(self, output_dir):
+        self.supervisor = Supervisor(bpy.path.abspath(output_dir), timeout=5)
+        self.node_type = 'SUPERVISOR'
         bpy.context.window_manager.armb.worker_list.clear()
         bpy.context.window_manager.armb.worker_index = 0
 
-    def server_stop(self):
-        self.server.remove_all_workers()
+    def supervisor_stop(self):
+        self.supervisor.remove_all_workers()
         self.node_type = None
 
-    def server_add_worker(self, host, port):
-        self.server.add_worker(host, port)
+    def supervisor_add_worker(self, host, port):
+        self.supervisor.add_worker(host, port)
 
-    def server_remove_worker(self, index):
-        self.server.remove_worker(index)
+    def supervisor_remove_worker(self, index):
+        self.supervisor.remove_worker(index)
 
-    def server_working(self):
-        return self.server.job and not self.server.job.uploading_complete()
+    def supervisor_working(self):
+        return self.supervisor.job and not self.supervisor.job.uploading_complete()
 
-    def server_finished_job(self):
-        return self.server.job and self.server.job.uploading_complete()
+    def supervisor_finished_job(self):
+        return self.supervisor.job and self.supervisor.job.uploading_complete()
 
-    def server_clean_workers(self):
-        self.server.clean_workers()
+    def supervisor_clean_workers(self):
+        self.supervisor.clean_workers()
 
-    def server_start_render(self):
-        self.server.start_job(create_render_job(display_mode=bpy.context.window_manager.armb.render_display_mode))
+    def supervisor_start_render(self):
+        self.supervisor.start_job(create_render_job(display_mode=bpy.context.window_manager.armb.render_display_mode))
 
-    def server_cancel_render(self):
-        self.server.stop_job()
+    def supervisor_cancel_render(self):
+        self.supervisor.stop_job()
 
-    def server_update_server_rendering(self, val):
-        if self.is_server():
+    def supervisor_update_supervisor_rendering(self, val):
+        if self.is_supervisor():
             if val:
-                self.server.enable_server_rendering()
+                self.supervisor.enable_supervisor_rendering()
             else:
-                self.server.disable_server_rendering()
+                self.supervisor.disable_supervisor_rendering()
 
     def update(self):
         if self.is_worker():
@@ -84,10 +84,10 @@ class ARMBController:
                 self.worker.restart()
             elif self.worker.ok():
                 self.worker.update()
-        elif self.is_server():
-            self.server.update()
-            if self.server_working():
-                bpy.context.window_manager.armb.progress_indicator = round(self.server.job_progress()*100)
+        elif self.is_supervisor():
+            self.supervisor.update()
+            if self.supervisor_working():
+                bpy.context.window_manager.armb.progress_indicator = round(self.supervisor.job_progress()*100)
 
 ARMB = ARMBController()
 
@@ -104,12 +104,12 @@ render_display_values = (
     ('PREFERENCES', "User Preferences", "Use the value in User Preferences (Interface > Temporary Editors > Render In)")
 )
 
-def update_server_rendering(prop, context):
-    ARMB.server_update_server_rendering(prop.render_on_server)
+def update_supervisor_rendering(prop, context):
+    ARMB.supervisor_update_supervisor_rendering(prop.render_on_supervisor)
 
 class ARMBSettings(bpy.types.PropertyGroup):
     render_display_mode: bpy.props.EnumProperty(name="Render display mode", description="How to display an in-progress render", default='AREA', items=render_display_values)
-    render_on_server: bpy.props.BoolProperty(name="Render on server", description="Use the server computer as another rendering worker", default=True, update=update_server_rendering)
+    render_on_supervisor: bpy.props.BoolProperty(name="Render on supervisor", description="Use the supervisor computer as another rendering worker", default=True, update=update_supervisor_rendering)
     output_dir: bpy.props.StringProperty(name="Output Path", description="The directory in which to store rendered frames", subtype='DIR_PATH', default="//armb/")
     worker_list: bpy.props.CollectionProperty(type=ARMBWorkerListItem)
     worker_index: bpy.props.IntProperty(name="Active Worker Index", default=0)
@@ -117,7 +117,7 @@ class ARMBSettings(bpy.types.PropertyGroup):
 
 class ARMB_UL_WorkerList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        worker = ARMB.server.workers[index]
+        worker = ARMB.supervisor.workers[index]
 
         if worker.ok() and not worker.connected() or worker.status == WorkerView.STATUS_INITIALIZING:
             status_icon = 'LAYER_USED'
@@ -158,7 +158,7 @@ class ARMB_OT_AddWorker(bpy.types.Operator):
     def execute(self, context):
         try:
             port = int(self.worker_port)
-            ARMB.server_add_worker(self.worker_ip, port)
+            ARMB.supervisor_add_worker(self.worker_ip, port)
 
             new_item = context.window_manager.armb.worker_list.add()
             new_item.temp_name = f"{self.worker_ip}:{self.worker_port}"
@@ -184,7 +184,7 @@ class ARMB_OT_RemoveWorker(bpy.types.Operator):
         return 0 <= context.window_manager.armb.worker_index < len(context.window_manager.armb.worker_list)
 
     def execute(self, context):
-        ARMB.server_remove_worker(context.window_manager.armb.worker_index)
+        ARMB.supervisor_remove_worker(context.window_manager.armb.worker_index)
         context.window_manager.armb.worker_list.remove(context.window_manager.armb.worker_index)
         return {'FINISHED'}
 
@@ -214,32 +214,32 @@ class ARMB_OT_StartWorker(bpy.types.Operator):
 class ARMB_OT_DisconnectWorker(bpy.types.Operator):
     bl_idname = "wm.disconnect_armb_worker"
     bl_label = "Disconnect"
-    bl_description = "Cancel active render and disconnect from server"
+    bl_description = "Cancel active render and disconnect from supervisor"
 
     def execute(self, context):
         ARMB.worker_stop()
         self.report({'INFO'}, "Successfully stopped worker")
         return {'FINISHED'}
 
-class ARMB_OT_StartServer(bpy.types.Operator):
-    bl_idname = "wm.start_armb_server"
-    bl_label = "Start Server"
-    bl_description = "Start an ARMB server"
+class ARMB_OT_StartSupervisor(bpy.types.Operator):
+    bl_idname = "wm.start_armb_supervisor"
+    bl_label = "Start Supervisor"
+    bl_description = "Start an ARMB supervisor"
 
     def execute(self, context):
-        ARMB.server_start(context.window_manager.armb.output_dir)
+        ARMB.supervisor_start(context.window_manager.armb.output_dir)
         bpy.ops.wm.armb_update_timer()
-        self.report({'INFO'}, 'Successfully started server')
+        self.report({'INFO'}, 'Successfully started supervisor')
         return {'FINISHED'}
 
-class ARMB_OT_DisconnectServer(bpy.types.Operator):
-    bl_idname = "wm.disconnect_armb_server"
+class ARMB_OT_DisconnectSupervisor(bpy.types.Operator):
+    bl_idname = "wm.disconnect_armb_supervisor"
     bl_label = "Disconnect"
     bl_description = "Cancel active render and disconnect from workers"
 
     def execute(self, context):
-        ARMB.server_stop()
-        self.report({'INFO'}, "Successfully stopped server")
+        ARMB.supervisor_stop()
+        self.report({'INFO'}, "Successfully stopped supervisor")
         return {'FINISHED'}
 
 class ARMB_OT_StartRender(bpy.types.Operator):
@@ -249,10 +249,10 @@ class ARMB_OT_StartRender(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return not ARMB.server_working()
+        return not ARMB.supervisor_working()
 
     def execute(self, context):
-        ARMB.server_start_render()
+        ARMB.supervisor_start_render()
         return {'FINISHED'}
 
 class ARMB_OT_CancelRender(bpy.types.Operator):
@@ -262,10 +262,10 @@ class ARMB_OT_CancelRender(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return ARMB.server_working()
+        return ARMB.supervisor_working()
 
     def execute(self, context):
-        ARMB.server_cancel_render()
+        ARMB.supervisor_cancel_render()
         return {'FINISHED'}
 
 class ARMB_OT_CleanWorkers(bpy.types.Operator):
@@ -274,8 +274,8 @@ class ARMB_OT_CleanWorkers(bpy.types.Operator):
     bl_description = "Delete rendered frames on workers"
 
     def execute(self, context):
-        ARMB.server_clean_workers()
-        ARMB.server_cancel_render()
+        ARMB.supervisor_clean_workers()
+        ARMB.supervisor_cancel_render()
         return {'FINISHED'}
 
     def draw(self, context):
@@ -291,10 +291,10 @@ class ARMB_OT_CloseRenderSummary(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return ARMB.server_finished_job()
+        return ARMB.supervisor_finished_job()
 
     def execute(self, context):
-        ARMB.server_cancel_render()
+        ARMB.supervisor_cancel_render()
         return {'FINISHED'}
 
 class ARMB_OT_ShowRenderStats(bpy.types.Operator):
@@ -304,18 +304,18 @@ class ARMB_OT_ShowRenderStats(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return ARMB.server.job is not None
+        return ARMB.supervisor.job is not None
 
     def draw(self, context):
-        stats = ARMB.server.job.worker_statistics()
+        stats = ARMB.supervisor.job.worker_statistics()
 
         row = self.layout.row()
         split = row.split(factor=0.5)
         col = split.column()
         col.label(text="Name")
-        if ARMB.server.server_worker in stats:
-            col.label(text="Server")
-        for worker in ARMB.server.workers:
+        if ARMB.supervisor.supervisor_worker in stats:
+            col.label(text="Supervisor")
+        for worker in ARMB.supervisor.workers:
             if worker.identity:
                 col.label(text=worker.identity)
             else:
@@ -323,9 +323,9 @@ class ARMB_OT_ShowRenderStats(bpy.types.Operator):
 
         col = split.column()
         col.label(text="Number")
-        if ARMB.server.server_worker in stats:
-            col.label(text=str(stats[ARMB.server.server_worker][0]))
-        for worker in ARMB.server.workers:
+        if ARMB.supervisor.supervisor_worker in stats:
+            col.label(text=str(stats[ARMB.supervisor.supervisor_worker][0]))
+        for worker in ARMB.supervisor.workers:
             if worker in stats:
                 col.label(text=str(stats[worker][0]))
             else:
@@ -333,9 +333,9 @@ class ARMB_OT_ShowRenderStats(bpy.types.Operator):
 
         col = split.column()
         col.label(text="Average Time")
-        if ARMB.server.server_worker in stats:
-            col.label(text=self.time_string(stats[ARMB.server.server_worker][1]))
-        for worker in ARMB.server.workers:
+        if ARMB.supervisor.supervisor_worker in stats:
+            col.label(text=self.time_string(stats[ARMB.supervisor.supervisor_worker][1]))
+        for worker in ARMB.supervisor.workers:
             if worker in stats:
                 col.label(text=self.time_string(stats[worker][1]))
             else:
@@ -394,11 +394,11 @@ class ARMB_PT_UI(bpy.types.Panel):
 
             row = layout.row()
             row.scale_y = 1.5
-            row.operator("wm.start_armb_server")
+            row.operator("wm.start_armb_supervisor")
 
             layout.separator()
             layout.prop(wm.armb, "output_dir")
-        elif ARMB.node_type == 'SERVER':
+        elif ARMB.node_type == 'SUPERVISOR':
             row = layout.row()
             row.operator("wm.start_armb_render", icon='RENDER_ANIMATION')
             row.operator("wm.cancel_armb_render", icon='CANCEL')
@@ -415,13 +415,13 @@ class ARMB_PT_UI(bpy.types.Panel):
             row.label(text="Render display mode: ")
             row.prop(wm.armb, "render_display_mode", text="")
 
-            layout.prop(wm.armb, "render_on_server")
+            layout.prop(wm.armb, "render_on_supervisor")
 
             layout.separator()
 
-            if ARMB.server_working() or ARMB.server_finished_job():
+            if ARMB.supervisor_working() or ARMB.supervisor_finished_job():
                 box = layout.box()
-                if ARMB.server_working():
+                if ARMB.supervisor_working():
                     row = box.row()
                     row.label(text="Render in progress...")
                     row.operator("wm.show_armb_render_stats")
@@ -434,17 +434,17 @@ class ARMB_PT_UI(bpy.types.Panel):
                     row.operator("wm.close_armb_render_summary", text="",  icon='X')
 
                 row = box.row()
-                row.label(text=f"{ARMB.server.job.frames_rendered}/{ARMB.server.job.frame_count} frames rendered")
-                row.label(text=f"{ARMB.server.job.frames_uploaded}/{ARMB.server.job.frame_count} frames uploaded")
+                row.label(text=f"{ARMB.supervisor.job.frames_rendered}/{ARMB.supervisor.job.frame_count} frames rendered")
+                row.label(text=f"{ARMB.supervisor.job.frames_uploaded}/{ARMB.supervisor.job.frame_count} frames uploaded")
 
-                if ARMB.server_working():
+                if ARMB.supervisor_working():
                     box.prop(wm.armb, "progress_indicator", slider=True)
                 else:
                     box.operator("wm.clean_armb_workers")
 
                 layout.separator()
 
-            layout.operator("wm.disconnect_armb_server")
+            layout.operator("wm.disconnect_armb_supervisor")
         else:
             if ARMB.worker.ok():
                 layout.label(text=ARMB.worker.status_message())
@@ -459,8 +459,8 @@ classes = [
     ARMB_UL_WorkerList,
     ARMB_OT_StartWorker,
     ARMB_OT_DisconnectWorker,
-    ARMB_OT_StartServer,
-    ARMB_OT_DisconnectServer,
+    ARMB_OT_StartSupervisor,
+    ARMB_OT_DisconnectSupervisor,
     ARMB_OT_StartRender,
     ARMB_OT_CancelRender,
     ARMB_OT_CleanWorkers,

@@ -108,7 +108,7 @@ class RenderJob:
         return not frame.assigned() or not frame.assignee.ok()
 
     def filename(self, frame, extension, directory):
-        digits_necessary = math.ceil(math.log10(self.frame_end))
+        digits_necessary = int(math.log10(self.frame_end))+1
         return f"{directory}{str(frame).rjust(digits_necessary, '0')}{extension}"
 
     def write_frame(self, frame, extension, directory, data):

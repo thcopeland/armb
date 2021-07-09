@@ -1,9 +1,9 @@
 from ..blender import blender
 from ..shared.task import RenderTask
 
-class ServerWorker:
+class SupervisorWorker:
     def __init__(self):
-        self.identity = '__server__'
+        self.identity = '__supervisor__'
         self.task = None
         self.enabled = True
         self.output_dir = None

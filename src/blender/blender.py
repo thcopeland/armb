@@ -1,5 +1,5 @@
 from ..shared.render_settings import RenderSettings
-from ..server.render_job import RenderJob
+from ..supervisor.render_job import RenderJob
 
 bpy = None
 

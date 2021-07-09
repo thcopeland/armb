@@ -1,4 +1,4 @@
-class ServerView:
+class SupervisorView:
     def __init__(self):
         self.identity = None
 

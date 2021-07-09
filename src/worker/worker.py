@@ -5,7 +5,7 @@ from ..shared.render_settings import RenderSettings
 from ..blender import blender
 from ..shared import utils
 from ..shared.task import RenderTask
-from .server_view import ServerView
+from .supervisor_view import SupervisorView
 
 class Worker:
     def __init__(self, output_dir, port, timeout=10):
@@ -14,7 +14,7 @@ class Worker:
         self.timeout = timeout
         self.socket = None
         self.connection = None
-        self.server = None
+        self.supervisor = None
         self.err = None
 
         self.render_settings = None
@@ -43,7 +43,7 @@ class Worker:
             elif isinstance(error, ConnectionError):
                 return "Connection lost or rejected"
             elif isinstance(error, ARMBMessageFormatError):
-                return "Received an invalid message (is this an ARMB server?)"
+                return "Received an invalid message (is this an ARMB supervisor?)"
             elif isinstance(error, ARMBMessageTimeoutError):
                 return "Connection timed out"
             elif isinstance(error, utils.BadMessageError):
@@ -74,7 +74,7 @@ class Worker:
             self.connection.close()
 
         self.task = None
-        self.server = None
+        self.supervisor = None
         self.connection = None
         self.closed = False
         self.err = None
@@ -115,7 +115,7 @@ class Worker:
         sock, addr = self.socket.accept()
         sock.setblocking(False)
         self.connection = ARMBConnection(sock, self.timeout)
-        self.server = ServerView()
+        self.supervisor = SupervisorView()
         self.connection.send(armb.new_identity_message())
         self.update()
 
@@ -144,7 +144,7 @@ class Worker:
     def handle_identity_message(self, message, msg_str):
         id = armb.parse_identity_message(msg_str)
         if id:
-            self.server.identity = id
+            self.supervisor.identity = id
         else:
             self.err = utils.BadMessageError("Unable to parse IDENTITY message", message)
 
@@ -158,7 +158,7 @@ class Worker:
         try:
             frame = int(armb.parse_request_render_message(msg_str))
 
-            if not self.server.verified() or self.task:
+            if not self.supervisor.verified() or self.task:
                 self.connection.send(armb.new_reject_render_message(frame))
             else:
                 self.task = RenderTask(frame)
@@ -171,7 +171,7 @@ class Worker:
             frame = int(armb.parse_request_upload_message(msg_str))
             filepath = blender.rendered_frame_path(frame, self.output_dir)
 
-            if not self.server.verified():
+            if not self.supervisor.verified():
                 self.connection.send(armb.new_reject_upload_message(frame))
             else:
                 try:
