@@ -1,5 +1,6 @@
 import socket, re, time
 from collections import deque
+from ..shared import utils
 
 class ARMBMessageData:
     @staticmethod
@@ -84,12 +85,14 @@ class ARMBConnection:
         self.closed = True
         self.socket.close()
 
-    def update(self, read, write):
+    def update(self):
         try:
+            readable, writeable = utils.socket_status(self.socket)
+
             if self.sending():
                 if time.time() - self.outgoing[0].start > self.msg_timeout:
                     self.error = ARMBMessageTimeoutError(self.outgoing)
-                elif write:
+                elif writeable:
                     self.__continue_sending()
                     if self.outgoing[0].complete():
                         # print(f"{self.outgoing[0].start}: Sent message \"{self.outgoing[0].message.tobytes().decode()}\" in {self.outgoing[0].elapsed()} seconds")
@@ -97,7 +100,7 @@ class ARMBConnection:
 
             if self.receiving() and time.time() - self.incoming[-1].start > self.msg_timeout:
                 self.error = ARMBMessageTimeoutError(self.incoming[-1])
-            elif self.ok() and read:
+            elif self.ok() and readable:
                 if self.receiving():
                     self.__continue_receiving()
                     # if self.incoming[-1].complete():

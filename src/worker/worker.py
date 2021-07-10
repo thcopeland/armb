@@ -98,8 +98,7 @@ class Worker:
                         self.accept_connection()
 
             if self.connected():
-                readable, writeable = utils.socket_status(self.connection.socket)
-                self.connection.update(readable, writeable)
+                self.connection.update()
 
                 if self.connection.finished_receiving():
                     self.handle_message(self.connection.receive())

@@ -83,9 +83,9 @@ class WorkerView:
         if self.connection and not self.connection.closed:
             self.connection.close()
 
-    def update_connection(self, read, write):
+    def update_connection(self):
         if self.connected():
-            self.connection.update(read, write)
+            self.connection.update()
 
     def handle_identity_message(self, message, msg_str):
         self.identity = armb.parse_identity_message(msg_str)

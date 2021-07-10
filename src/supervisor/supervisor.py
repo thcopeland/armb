@@ -63,8 +63,7 @@ class Supervisor:
 
         for worker in self.workers:
             if worker.ok() and worker.connected():
-                readable, writeable = utils.socket_status(worker.socket)
-                worker.update_connection(readable, writeable)
+                worker.update_connection()
 
                 if worker.connection.finished_receiving():
                     self.handle_message(worker, worker.connection.receive())
