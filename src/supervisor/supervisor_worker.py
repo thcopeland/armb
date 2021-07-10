@@ -51,9 +51,10 @@ class SupervisorWorker:
 
         if self.preparing():
             path = self.job.filename(self.task.frame, '', self.output_dir)
+            blender.apply_render_settings(self.job.settings)
             if 'CANCELLED' not in blender.render_frame(self.task.frame, path, False):
-                self.task.started = True
                 blender.set_render_callbacks(self.handle_render_complete, self.handle_render_cancel)
+                self.task.started = True
 
     def handle_render_complete(self, scene, bpy_context):
         if self.job:

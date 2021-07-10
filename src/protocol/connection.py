@@ -140,15 +140,12 @@ class ARMBConnection:
                 else:
                     self.error = ARMBMessageFormatError(incoming)
                     return
-
-        if incoming.h_len() <= incoming.progress < incoming.hm_len():
+        elif incoming.h_len() <= incoming.progress < incoming.hm_len():
             incoming.progress += self.socket.recv_into(incoming.message[(incoming.progress - incoming.h_len()):])
-
-        if incoming.hm_len() <= incoming.progress < incoming.hmd_len():
+        elif incoming.hm_len() <= incoming.progress < incoming.hmd_len():
             incoming.progress += self.socket.recv_into(incoming.data[(incoming.progress - incoming.hm_len()):])
 
         if incoming.complete():
             incoming.end = time.time()
-
-        if incoming.progress == original_progress: # read 0 bytes, EOF
+        elif incoming.progress == original_progress: # read 0 bytes, EOF
             self.close()

@@ -105,9 +105,9 @@ class Worker:
                     self.handle_message(self.connection.receive())
 
                 if self.task and not self.task.started:
+                    blender.apply_render_settings(self.render_settings)
                     if 'CANCELLED' not in blender.render_frame(self.task.frame, self.output_dir):
                         self.task.started = True
-                        blender.apply_render_settings(self.render_settings)
             elif self.connection and self.connection.closed:
                 self.stop()
 
