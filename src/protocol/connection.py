@@ -12,15 +12,18 @@ class ARMBMessageData:
     def from_header(header):
         match = re.match("ARMB ([a-f0-9]{2}) ([a-f0-9]{8})", header.tobytes().decode())
         if match:
+            # For efficiency when loading, the message and data are stored in a single buffer
             msg_len, data_len = int(match.group(1), 16), int(match.group(2), 16)
-            return ARMBMessageData(memoryview(header), memoryview(bytearray(msg_len)), memoryview(bytearray(data_len)), len(header), False)
+            msg_data_view = memoryview(bytearray(msg_len + data_len))
+            return ARMBMessageData(memoryview(header), msg_data_view[:msg_len], msg_data_view[msg_len:], len(header), False, msg_data_view)
 
-    def __init__(self, header=None, message=None, data=None, progress=0, outgoing=True):
+    def __init__(self, header=None, message=None, data=None, progress=0, outgoing=True, all_data=None):
         self.start = time.time()
         self.end = None
         self.header = header
         self.message = message
         self.data = data
+        self.all_data = all_data
         self.progress = progress
         self.outgoing = outgoing
 
@@ -140,10 +143,8 @@ class ARMBConnection:
                 else:
                     self.error = ARMBMessageFormatError(incoming)
                     return
-        elif incoming.h_len() <= incoming.progress < incoming.hm_len():
-            incoming.progress += self.socket.recv_into(incoming.message[(incoming.progress - incoming.h_len()):])
-        elif incoming.hm_len() <= incoming.progress < incoming.hmd_len():
-            incoming.progress += self.socket.recv_into(incoming.data[(incoming.progress - incoming.hm_len()):])
+        elif incoming.h_len() <= incoming.progress < incoming.hmd_len():
+            incoming.progress += self.socket.recv_into(incoming.all_data[(incoming.progress - incoming.h_len()):])
 
         if incoming.complete():
             incoming.end = time.time()
