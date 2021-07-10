@@ -117,41 +117,35 @@ class WorkerView:
 
     def handle_render_complete_message(self, job, message, msg_str):
         try:
-            frame = int(armb.parse_render_complete_message(msg_str))
+            if job:
+                frame = int(armb.parse_render_complete_message(msg_str))
+                job.mark_rendered(frame)
+                self.status = WorkerView.STATUS_READY
         except ValueError as e:
-            print(e)
             self.err = utils.BadMessageError("Unable to parse COMPLETE RENDER message", message)
-            return
-
-        if job:
-            job.mark_rendered(frame)
-            self.status = WorkerView.STATUS_READY
+            print(e)
 
     def handle_reject_upload_message(self, job, message, msg_str):
         try:
-            frame = int(armb.parse_reject_upload_message(msg_str))
+            if job:
+                frame = int(armb.parse_reject_upload_message(msg_str))
+                job.mark_irretrievable(frame)
+                self.status = WorkerView.STATUS_READY
         except ValueError as e:
-            print(e)
             self.err = utils.BadMessageError("Unable to parse RJECT UPLOAD message", message)
-            return
-
-        if job:
-            job.mark_irretrievable(frame)
-            self.status = WorkerView.STATUS_READY
+            print(e)
 
     def handle_upload_complete_message(self, output_dir, job, message, msg_str):
         try:
-            frame_str, extension = armb.parse_complete_upload_message(msg_str)
-            frame = int(frame_str)
+            if job:
+                frame_str, extension = armb.parse_complete_upload_message(msg_str)
+                frame = int(frame_str)
+                job.mark_uploaded(frame)
+                job.write_frame(frame, extension, output_dir, message.data)
+                self.status = WorkerView.STATUS_READY
         except (ValueError, TypeError) as e:
-            print(e)
             self.err = utils.BadMessageError("Unable to parse COMPLETE UPLOAD message", message)
-            return
-
-        if job:
-            job.mark_uploaded(frame)
-            job.write_frame(frame, extension, output_dir, message.data)
-            self.status = WorkerView.STATUS_READY
+            print(e)
 
     def request_render_frame(self, job):
         if self.settings_id == job.settings.synchronization_id:
