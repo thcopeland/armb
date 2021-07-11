@@ -26,7 +26,7 @@ class FrameAssignment:
         self.elapsed = time.time() - self.elapsed
 
 class RenderJob:
-    def __init__(self, frame_start, frame_end, settings):
+    def __init__(self, frame_start, frame_end, settings, original_settings):
         self.frame_start = frame_start
         self.frame_end = frame_end
         self.frame_count = frame_end - frame_start + 1
@@ -35,6 +35,7 @@ class RenderJob:
         self.frames_irretrievable = 0
         self.frame_assignments = [ FrameAssignment(n) for n in range(frame_start, frame_end+1) ]
         self.settings = settings
+        self.original_settings = original_settings
 
     def progress(self):
         if not self.rendering_complete():

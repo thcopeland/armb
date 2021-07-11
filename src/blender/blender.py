@@ -33,7 +33,7 @@ def create_render_job(display_mode=None):
         settings = create_render_settings()
         if display_mode is not None:
             settings.display_mode = display_mode
-        return RenderJob(scene.frame_start, scene.frame_end, settings)
+        return RenderJob(scene.frame_start, scene.frame_end, settings, create_render_settings())
     return RenderJob(1, 250, create_render_settings())
 
 def set_render_callbacks(finished_callback, cancelled_callback):

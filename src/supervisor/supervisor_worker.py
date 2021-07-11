@@ -65,12 +65,14 @@ class SupervisorWorker:
 
     def handle_render_cancel(self, scene, bpy_context):
         if self.task.remote_cancelled:
+            blender.apply_render_settings(self.job.original_settings)
             blender.clear_render_callbacks()
             self.task = None
         else:
             self.task.started = False
             self.task.record_failed_attempt()
             if self.task.failed():
+                blender.apply_render_settings(self.job.original_settings)
                 blender.clear_render_callbacks()
                 self.job.unassign_frame(self.task.frame)
                 self.task = None
