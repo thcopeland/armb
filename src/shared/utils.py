@@ -1,4 +1,4 @@
-import select, glob, os
+import socket, select, glob, os
 
 def socket_status(socket):
     read, write, err = select.select([socket], [socket], [], 0)
@@ -17,3 +17,15 @@ def delete_rendered_images(path, extension):
     directory, prefix = os.path.split(path)
     if not os.listdir(directory):
         os.rmdir(directory)
+
+def get_local_ip():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    ip = None
+
+    try:
+        sock.connect(('10.255.255.255', 1))
+        ip = sock.getsockname()[0]
+    finally:
+        sock.close()
+
+    return ip

@@ -11,6 +11,7 @@ class Worker:
     def __init__(self, output_dir, port, timeout=10):
         self.output_dir = output_dir
         self.port = port
+        self.local_ip = utils.get_local_ip()
         self.timeout = timeout
         self.socket = None
         self.connection = None
@@ -55,6 +56,8 @@ class Worker:
         elif self.connected():
             return f"Ready on port {self.port}"
         else:
+            if self.local_ip:
+                return f"Waiting on {self.local_ip}:{self.port}"
             return f"Waiting on port {self.port}"
 
     def start(self):
