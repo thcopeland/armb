@@ -1,4 +1,4 @@
-import socket, os.path, shutil
+import socket
 from ..protocol.connection import ARMBConnection, ARMBMessageTimeoutError, ARMBMessageFormatError
 from ..protocol import armb
 from ..shared.render_settings import RenderSettings
@@ -212,4 +212,4 @@ class Worker:
         blender.apply_render_settings(self.original_render_settings)
 
     def handle_cleanup_message(self):
-        shutil.rmtree(self.output_dir)
+        utils.delete_rendered_images(self.output_dir, blender.filename_extension())
