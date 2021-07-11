@@ -1,6 +1,7 @@
 import socket, threading
 from ..protocol.connection import ARMBConnection, ARMBMessageTimeoutError, ARMBMessageFormatError
 from ..protocol import armb
+from ..shared import utils
 
 class WorkerView:
     STATUS_INITIALIZING = 'INITIALIZING'
