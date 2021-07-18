@@ -10,7 +10,7 @@ Blender's Python API can change significantly between versions, so you'll want t
 
 | Blender Version     | ARMB Version
 |---------------------|--------------------------
-| 2.9*                | [0.1.0]()
+| 2.9*                | [0.1.0](https://github.com/thcopeland/armb/releases/tag/v0.1.0)
 
 ## Usage
 
