@@ -16,13 +16,13 @@ Blender's Python API can change significantly between versions, so you'll want t
 
 After downloading the most appropriate version of ARMB, install it as a Blender addon on each computer you want to use. When you want to render an animation, begin by copying every file necessary for the render to each computer. Then navigate to the Render tab and find the ARMB Network Render panel.
 
-![Initial Menu](/docs/initial_menu.png)
+![Initial Menu](https://github.com/thcopeland/armb/blob/master/doc/initial_menu.png)
 
 #### Setting up a supervisor
 
 On the computer you want to use as a supervisor, click `Start Supervisor`. Before you do that, though, you might want to change the output path. This is where all the rendered files will eventually end up. You'll then see this screen:
 
-![Supervisor UI](/docs/supervisor_menu.png)
+![Supervisor UI](https://github.com/thcopeland/armb/blob/master/doc/supervisor_menu.png)
 
 The UI is largely self-explanatory, but some of the details are subtle.
 
@@ -40,7 +40,7 @@ The workers are shown in a list. An icon indicates what the worker is currently 
 
 On each computer you want to use as a worker, click `Start Worker`. You can change the output path if you feel like it, but the default should be fine. On the menu that pops up after you click `Start Worker`, you can set on which port the worker should run. The default (7210) should be fine, but if the worker fails to start, you should try something else.
 
-![Worker UI](/docs/worker_menu.png)
+![Worker UI](https://github.com/thcopeland/armb/blob/master/doc/worker_menu.png)
 
 Workers are far simpler than supervisors. A helpful message indicates what's going on, and the `Disconnect` button allows you disconnect a worker from the supervisor. Any frames that were assigned to the worker will then be reassigned and rerendered.
 
