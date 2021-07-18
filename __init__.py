@@ -351,7 +351,7 @@ class ARMB_OT_ShowRenderStats(bpy.types.Operator):
     def time_string(self, secs):
         mins = int(secs/60)
         hours = int(mins/60)
-        return f"{(hours%60):02}:{(mins%60):02}:{secs:05.02f}"
+        return f"{(hours%60):02}:{(mins%60):02}:{(secs%60):05.02f}"
 
 class ARMB_OT_UpdateTimer(bpy.types.Operator):
     bl_idname = "wm.armb_update_timer"
