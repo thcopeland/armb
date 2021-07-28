@@ -34,7 +34,7 @@ The UI is largely self-explanatory, but some of the details are subtle.
  - By default, ARMB also renders frames on the supervisor. You can change this by setting `Render on supervisor`, though I can't imagine why you'd want to.
  - `Disconnect` cancels the in-progress render, if any, and disconnects from the workers. If something goes wrong, you can use this to restart ARMB.
 
-The workers are shown in a list. An icon indicates what the worker is currently doing: a solid dot means that the worker is ready, an empty dot means that it was unable to connect, circling arrows mean that the render settings are being synchronized, a camera means that the worker is rendering, and a "warning triangle" indicates that an error occurred.
+The workers are shown in a list. An icon indicates what the worker is currently doing: a solid dot means that the worker is ready, an empty dot means that it was unable to connect, circling arrows mean that the render settings are being synchronized, a camera means that the worker is rendering, an upwards arrow means that the worker is uploading frames to the supervisor, and a "warning triangle" indicates that an error occurred.
 
 #### Setting up a worker
 
@@ -46,22 +46,22 @@ Workers are far simpler than supervisors. A helpful message indicates what's goi
 
 If you cancel a render by pressing `ESC`, if the render was already canceled by the supervisor, the render will immediately stop and not recommence. If the supervisor did not cancel the render, however, the render will be retried twice, just in case you pressed it accidentally, before the worker gives up and starts on another frame. The original frame will be rendered by another worker.
 
-## Is ARMB right for me?
+## Alternatives
 
 ARMB has a few things going for it:
 
- - Lightweight. ARMB uses very little processing power, and, while rendering, very little memory (ARMB does use a lot of memory while uploading, but memory is less precious at that point, since rendering is complete).
- - Flexible. Some distributed renderers can only handle a single .blend file and have trouble with files that reference simulation data or external images. For ARMB, you copy every file you need to each computer: it's more work, but more flexible. ARMB also lets you do weird things, like render different files on each worker or use multiple workers on the same computer (one on the CPU and one on the GPU, for example).
+ - Lightweight. ARMB uses very little processing power and memory while rendering (ARMB does use a lot of memory while uploading, but memory is less precious at that point, since rendering is complete).
+ - Flexible. Some distributed renderers can only handle a single .blend file and have trouble with files that reference simulation data or external images. For ARMB, you must copy every file you need to each computer: more work, but more flexible. ARMB also lets you do weird things, like render different files on each worker or use multiple workers on the same computer (one on the CPU and one on the GPU, for example).
  - Safe. It saves every file after rendering, so even if something crashes midway through a render, all the files are easily recoverable. ARMB also doesn't delete anything unless you tell it to.
  - In-flight changes. You can add and remove workers, and change the `Render on supervisor` behavior, during a render.
 
-However, ARMB also has some significant drawbacks:
+However, ARMB also has some drawbacks:
 
  - Animations only. Still images will be slightly slower over ARMB.
- - Should only be used over a local network. A single malicious worker or supervisor can crash the others.
+ - Should only be used over a local network. A single malicious worker or supervisor can crash the others. Also, the network messages are not encrypted.
  - Fragile. If a supervisor loses a connection, however briefly, the worker will be lost and have to be re-added.
  - Difficult to cancel renders. After pressing `Cancel` on the supervisor, you can either wait for every in-progress render to finish, or walk over to each computer and hit `ESC` to stop them. Other distributed renderers use multiple processes to avoid this.
- - Difficult to set up. ARMB requires you to copy the file you want to render manually to each computer. Many distributed renderers automatically synchronize the file in real time. This comes at the cost of making it much harder to handle external data, like simulations or some images.
+ - Difficult to set up. ARMB requires you to copy the file you want to render manually to each computer. Many distributed renderers automatically synchronize the file in real time, which comes at the cost of making it much harder to handle external data, like simulations or some images.
  - Alpha. Currently, ARMB is in Alpha mode. Things should generally work, but you may run into strange issues. Please create an Issue on Github if this happens to you, so we can fix it.
 
-For these reasons, you may want to use a more serious distributed rendering tool, like [Flamenco](https://www.flamenco.io/), [Pandora](https://prism-pipeline.com/pandora/), [Crowdrender](https://www.crowd-render.com/), or even something heavier, like [Sheepit](https://www.sheepit-renderfarm.com/).
+For these reasons, you may want to use a more serious distributed rendering tool, such as [Flamenco](https://www.flamenco.io/) or [Pandora](https://prism-pipeline.com/pandora/), or even something heavier, like [Sheepit](https://www.sheepit-renderfarm.com/). [Crowdrender](https://www.crowd-render.com/) is another possibility, albeit neither free nor open source.
