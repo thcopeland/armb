@@ -243,6 +243,14 @@ class ARMB_OT_DisconnectSupervisor(bpy.types.Operator):
         self.report({'INFO'}, "Successfully stopped supervisor")
         return {'FINISHED'}
 
+    def draw(self, context):
+        self.layout.label(text="Not all frames have been uploaded yet. Are you sure?")
+
+    def invoke(self, context, event):
+        if ARMB.supervisor_working():
+            return context.window_manager.invoke_props_dialog(self)
+        return self.execute(context)
+
 class ARMB_OT_StartRender(bpy.types.Operator):
     bl_idname = "wm.start_armb_render"
     bl_label = "Render"
