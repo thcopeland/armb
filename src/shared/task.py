@@ -1,6 +1,7 @@
 class RenderTask:
-    def __init__(self, frame):
+    def __init__(self, frame, max_frame):
         self.frame = frame
+        self.max_frame = max_frame
         self.started = False
         self.remote_cancelled = False
         self.attempts = 0

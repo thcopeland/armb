@@ -1,5 +1,6 @@
 from ..blender import blender
 from ..shared.task import RenderTask
+from ..shared import utils
 
 class SupervisorWorker:
     def __init__(self):
@@ -47,12 +48,12 @@ class SupervisorWorker:
             frame = self.job.assign_next_frame(self)
 
             if frame:
-                self.task = RenderTask(frame)
+                self.task = RenderTask(frame, self.job.frame_end)
 
         if self.preparing():
-            path = self.job.filename(self.task.frame, '', self.output_dir)
+            path = utils.filename_for_frame(self.task.frame, self.task.max_frame, '', self.output_dir)
             blender.apply_render_settings(self.job.settings)
-            if 'CANCELLED' not in blender.render_frame(self.task.frame, path, False):
+            if 'CANCELLED' not in blender.render_frame(self.task.frame, path):
                 blender.set_render_callbacks(self.handle_render_complete, self.handle_render_cancel)
                 self.task.started = True
 

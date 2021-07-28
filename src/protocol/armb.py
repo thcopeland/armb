@@ -25,11 +25,14 @@ def new_confirm_sync_message(id):
 def parse_confirm_sync_message(message):
     return first_match_group("\ACONFIRM SYNCHRONIZE (\d+)\Z", message)
 
-def new_request_render_message(frame):
-    return bytes(f"RENDER {frame}".encode())
+def new_request_render_message(frame, max_frame):
+    return bytes(f"RENDER {frame} {max_frame}".encode())
 
 def parse_request_render_message(message):
-    return first_match_group("RENDER (-?\d+)", message)
+    match = re.match("RENDER (-?\d+) (-?\d+)", message)
+
+    if match:
+        return match.groups()
 
 def new_reject_render_message(frame):
     return bytes(f"REJECT RENDER {frame}".encode())
@@ -49,11 +52,14 @@ def new_cancel_task_message():
 def new_confirm_cancelled_message():
     return bytes("CONFIRM CANCEL".encode())
 
-def new_request_upload_message(frame):
-    return bytes(f"UPLOAD {frame}".encode())
+def new_request_upload_message(frame, max_frame):
+    return bytes(f"UPLOAD {frame} {max_frame}".encode())
 
 def parse_request_upload_message(message):
-    return first_match_group("UPLOAD (-?\d+)", message)
+    match = re.match("UPLOAD (-?\d+) (-?\d+)", message)
+
+    if match:
+        return match.groups()
 
 def new_reject_upload_message(frame):
     return bytes(f"REJECT UPLOAD {frame}".encode())

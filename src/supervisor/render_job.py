@@ -1,4 +1,5 @@
 import os, math, time
+from ..shared import utils
 
 class FrameAssignment:
     def __init__(self, frame_num):
@@ -108,13 +109,9 @@ class RenderJob:
     def available(self, frame):
         return not frame.assigned() or not frame.assignee.ok()
 
-    def filename(self, frame, extension, directory):
-        digits_necessary = int(math.log10(self.frame_end))+1
-        return f"{directory}{str(frame).rjust(digits_necessary, '0')}{extension}"
-
     def write_frame(self, frame, extension, directory, data):
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        with open(self.filename(frame, extension, directory), 'wb') as f:
+        with open(utils.filename_for_frame(frame, self.frame_end, extension, directory), 'wb') as f:
             f.write(data)

@@ -1,4 +1,4 @@
-import socket, select, glob, os
+import socket, select, glob, os, math
 
 def socket_status(socket):
     read, write, err = select.select([socket], [socket], [], 0)
@@ -29,3 +29,7 @@ def get_local_ip():
         sock.close()
 
     return ip
+
+def filename_for_frame(frame, max_frame, extension, directory):
+    digits_necessary = int(math.log10(abs(max_frame)))+1
+    return f"{directory}{str(frame).rjust(digits_necessary, '0')}{extension}"

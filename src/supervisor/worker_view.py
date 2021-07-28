@@ -152,7 +152,7 @@ class WorkerView:
         if self.settings_id == job.settings.synchronization_id:
             frame = job.assign_next_frame(self)
             if frame:
-                self.connection.send(armb.new_request_render_message(frame))
+                self.connection.send(armb.new_request_render_message(frame, job.frame_end))
                 self.status = WorkerView.STATUS_RENDERING
         else:
             self.connection.send(*armb.new_sync_message(job.settings))
@@ -162,7 +162,7 @@ class WorkerView:
         frame = job.next_for_uploading(self)
 
         if frame:
-            self.connection.send(armb.new_request_upload_message(frame))
+            self.connection.send(armb.new_request_upload_message(frame, job.frame_end))
             self.status = WorkerView.STATUS_UPLOADING
 
     def request_clean_frames(self):

@@ -108,7 +108,8 @@ class Worker:
 
                 if self.task and not self.task.started:
                     blender.apply_render_settings(self.render_settings)
-                    if 'CANCELLED' not in blender.render_frame(self.task.frame, self.output_dir):
+                    path = utils.filename_for_frame(self.task.frame, self.task.max_frame, '', self.output_dir)
+                    if 'CANCELLED' not in blender.render_frame(self.task.frame, path):
                         self.task.started = True
             elif self.connection and self.connection.closed:
                 self.stop()
@@ -158,20 +159,22 @@ class Worker:
 
     def handle_render_message(self, message, msg_str):
         try:
-            frame = int(armb.parse_request_render_message(msg_str))
+            frame_str, max_frame_str = armb.parse_request_render_message(msg_str)
+            frame, max_frame = int(frame_str), int(max_frame_str)
 
             if not self.supervisor.verified() or self.task:
                 self.connection.send(armb.new_reject_render_message(frame))
             else:
-                self.task = RenderTask(frame)
+                self.task = RenderTask(frame, max_frame)
         except ValueError as e:
             print(e)
             self.err = utils.BadMessageError("Unable to parse RENDER message", message)
 
     def handle_upload_message(self, message, msg_str):
         try:
-            frame = int(armb.parse_request_upload_message(msg_str))
-            filepath = blender.rendered_frame_path(frame, self.output_dir)
+            frame_str, max_frame_str = armb.parse_request_upload_message(msg_str)
+            frame, max_frame = int(frame_str), int(max_frame_str)
+            filepath = utils.filename_for_frame(frame, max_frame, blender.filename_extension(), self.output_dir)
 
             if not self.supervisor.verified():
                 self.connection.send(armb.new_reject_upload_message(frame))
