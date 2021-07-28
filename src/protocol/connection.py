@@ -111,7 +111,7 @@ class ARMBConnection:
             self.error = e
             self.close()
         except BlockingIOError as e:
-            print(e) # do nothing and hope for the best
+            pass # do nothing and hope for the best
 
     def __continue_sending(self):
         outgoing = self.outgoing[0]

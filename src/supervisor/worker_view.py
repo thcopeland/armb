@@ -124,7 +124,6 @@ class WorkerView:
                 self.status = WorkerView.STATUS_READY
         except ValueError as e:
             self.err = utils.BadMessageError("Unable to parse COMPLETE RENDER message", message)
-            print(e)
 
     def handle_reject_upload_message(self, job, message, msg_str):
         try:
@@ -134,7 +133,6 @@ class WorkerView:
                 self.status = WorkerView.STATUS_READY
         except ValueError as e:
             self.err = utils.BadMessageError("Unable to parse RJECT UPLOAD message", message)
-            print(e)
 
     def handle_upload_complete_message(self, output_dir, job, message, msg_str):
         try:
@@ -146,7 +144,6 @@ class WorkerView:
                 self.status = WorkerView.STATUS_READY
         except (ValueError, TypeError) as e:
             self.err = utils.BadMessageError("Unable to parse COMPLETE UPLOAD message", message)
-            print(e)
 
     def request_render_frame(self, job):
         if self.settings_id == job.settings.synchronization_id:

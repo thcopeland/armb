@@ -167,7 +167,6 @@ class Worker:
             else:
                 self.task = RenderTask(frame, max_frame)
         except ValueError as e:
-            print(e)
             self.err = utils.BadMessageError("Unable to parse RENDER message", message)
 
     def handle_upload_message(self, message, msg_str):
@@ -186,7 +185,6 @@ class Worker:
                     print("Unable to open", filepath)
                     self.connection.send(armb.new_reject_upload_message(frame))
         except ValueError as e:
-            print(e)
             self.err = utils.BadMessageError("Unable to parse UPLOAD message", message)
 
     def handle_cancel_message(self):
