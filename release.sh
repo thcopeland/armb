@@ -9,9 +9,13 @@ if [ -z $version ]; then
 fi
 
 mkdir $dir
-cp -r src/ $dir/src/
-cp __init__.py LICENSE README.md $dir/
+mkdir $dir/armb
+cp -r src/ $dir/armb/src/
+cp __init__.py LICENSE README.md $dir/armb/
 find $dir -type d -name __pycache__ -prune -exec rm -rf {} \;
 
-zip $dir.zip -r $dir > /dev/null
+cd $dir
+zip ../$dir.zip -r armb/ > /dev/null
+cd ../
+
 rm -rf $dir
